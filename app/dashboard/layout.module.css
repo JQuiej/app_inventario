@@ -1,0 +1,188 @@
+/* app/dashboard/layout.module.css */
+
+.container {
+  display: flex;
+  min-height: 100vh;
+  /* Fondo general oscuro (igual que el login) */
+  background-color: #0f172a;
+  font-family: system-ui, -apple-system, sans-serif;
+  /* Aseguramos que el texto base sea claro en todo el dashboard */
+  color: #f8fafc;
+}
+
+/* --- SIDEBAR (Barra Lateral) --- */
+.sidebar {
+  width: 260px;
+  /* Fondo estilo "Tarjeta" para diferenciarlo del contenido principal */
+  background-color: #1e293b; 
+  border-right: 1px solid #334155; /* Borde sutil a la derecha */
+  color: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 50;
+  transition: transform 0.3s ease-in-out;
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.2); /* Sombra suave para profundidad */
+}
+
+.sidebarHeader {
+  padding: 1.5rem;
+  border-bottom: 1px solid #334155; /* Separador sutil */
+}
+
+.brand {
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  margin: 0;
+  color: #ffffff;
+}
+
+.userEmail {
+  font-size: 0.75rem;
+  color: #94a3b8; /* Gris medio para texto secundario */
+  margin-top: 0.25rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nav {
+  flex: 1;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.navLink {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  color: #cbd5e1; /* Texto gris claro */
+  text-decoration: none;
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.navLink:hover {
+  background-color: #334155; /* Un tono más claro al pasar el mouse */
+  color: #ffffff;
+  border-color: #475569;
+}
+
+.footer {
+  padding: 1rem;
+  border-top: 1px solid #334155;
+}
+
+.logoutBtn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: transparent;
+  border: none;
+  color: #f87171; /* Rojo suave que se ve bien en oscuro */
+  cursor: pointer;
+  font-weight: 500;
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+
+.logoutBtn:hover {
+  background-color: #334155; /* Feedback visual al pasar el mouse */
+  color: #fca5a5;
+}
+
+/* --- MAIN CONTENT --- */
+.main {
+  flex: 1;
+  margin-left: 260px; /* Espacio para el sidebar en desktop */
+  padding: 2rem;
+  width: 100%;
+  /* El fondo ya viene del container (#0f172a) */
+}
+
+/* --- MOBILE HEADER (Solo visible en móvil) --- */
+.mobileHeader {
+  display: none; /* Oculto en desktop */
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  background-color: #1e293b; /* Igual que el sidebar */
+  border-bottom: 1px solid #334155;
+  z-index: 40;
+  align-items: center;
+  padding: 0 1rem;
+  justify-content: space-between;
+  color: white;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.menuBtn {
+  background: none;
+  border: none;
+  color: #cbd5e1;
+  cursor: pointer;
+  padding: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+}
+
+.menuBtn:hover {
+  background-color: #334155;
+  color: white;
+}
+
+.overlay {
+  display: none;
+}
+
+/* --- RESPONSIVE DESIGN (Móviles) --- */
+@media (max-width: 768px) {
+  .main {
+    margin-left: 0;
+    padding: 1rem;
+    padding-top: 80px; /* Espacio para el header móvil */
+  }
+
+  .mobileHeader {
+    display: flex;
+  }
+
+  /* El sidebar se oculta moviéndolo a la izquierda */
+  .sidebar {
+    transform: translateX(-100%);
+    border-right: none; /* En móvil no necesitamos borde derecho si hay overlay */
+  }
+
+  /* Clase activa para mostrar el sidebar */
+  .sidebarOpen {
+    transform: translateX(0);
+    box-shadow: 10px 0 30px rgba(0,0,0,0.5); /* Sombra fuerte sobre el contenido */
+  }
+
+  /* Fondo oscuro cuando el menú está abierto */
+  .overlayOpen {
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.7); /* Más oscuro para enfocar el menú */
+    z-index: 45;
+    backdrop-filter: blur(3px); /* Efecto borroso elegante */
+  }
+}

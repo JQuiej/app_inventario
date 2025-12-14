@@ -1,0 +1,183 @@
+/* app/login/login.module.css */
+
+.container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  /* Fondo general muy oscuro (casi negro azulado) */
+  background-color: #0f172a; 
+  font-family: system-ui, -apple-system, sans-serif;
+  padding: 1rem;
+}
+
+.card {
+  /* Fondo de la tarjeta: un azul grisáceo oscuro para diferenciarlo del fondo */
+  background-color: #1e293b; 
+  padding: 2.5rem;
+  border-radius: 16px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); /* Sombra más intensa para dar profundidad */
+  width: 100%;
+  max-width: 400px;
+  /* Borde sutil para definir los límites en modo oscuro */
+  border: 1px solid #334155; 
+}
+
+.title {
+  text-align: center;
+  /* Texto blanco brillante para el título */
+  color: #f8fafc; 
+  margin-bottom: 0.5rem;
+  font-size: 1.75rem;
+  font-weight: 800;
+}
+
+.subtitle {
+  text-align: center;
+  /* Texto gris claro para subtítulos */
+  color: #94a3b8; 
+  margin-bottom: 2rem;
+  font-size: 0.95rem;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  /* Gris claro para las etiquetas */
+  color: #cbd5e1; 
+}
+
+.input {
+  width: 100%;
+  padding: 0.875rem;
+  /* Fondo del input más oscuro que la tarjeta */
+  background-color: #0f172a; 
+  /* Borde oscuro pero visible */
+  border: 1px solid #334155; 
+  border-radius: 8px;
+  font-size: 1rem;
+  /* Texto blanco al escribir */
+  color: #ffffff; 
+  box-sizing: border-box;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.input::placeholder {
+  color: #475569; /* Placeholder sutil */
+}
+
+.input:focus {
+  outline: none;
+  /* Borde azul brillante al enfocar */
+  border-color: #3b82f6; 
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+/* Botón Principal */
+.submitButton {
+  width: 100%;
+  padding: 0.875rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  border: none;
+  color: white;
+  /* Azul vibrante que resalta sobre lo oscuro */
+  background-color: #3b82f6; 
+  transition: background-color 0.2s, transform 0.1s;
+  margin-top: 0.5rem;
+}
+
+.submitButton:hover {
+  background-color: #2563eb; /* Azul un poco más oscuro al pasar el mouse */
+}
+
+.submitButton:active {
+  transform: translateY(1px);
+}
+
+/* Alertas */
+.alert {
+  padding: 1rem;
+  /* Fondo verde oscuro semitransparente */
+  background-color: rgba(6, 95, 70, 0.3); 
+  /* Texto verde claro */
+  color: #34d399; 
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  border: 1px solid #065f46;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+/* Footer del toggle */
+.toggleText {
+  margin-top: 1.5rem;
+  text-align: center;
+  font-size: 0.9rem;
+  color: #94a3b8; /* Gris medio */
+}
+
+.toggleLink {
+  background: none;
+  border: none;
+  /* Azul celeste para enlaces, mejor legibilidad en oscuro */
+  color: #60a5fa; 
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  margin-left: 5px;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.toggleLink:hover {
+  color: #93c5fd; /* Azul muy claro al pasar el mouse */
+  text-decoration: underline;
+}
+
+/* ... resto de tu CSS anterior ... */
+
+/* Contenedor para posicionar el icono */
+.passwordWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+/* El botón del icono */
+.passwordToggle {
+  position: absolute;
+  right: 12px; /* Espacio desde la derecha */
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: #94a3b8; /* Color gris pizarra claro para el icono */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+}
+
+.passwordToggle:hover {
+  color: #cbd5e1; /* Más brillante al pasar el mouse */
+}
+
+.passwordToggle:focus {
+  outline: none;
+  color: #3b82f6; /* Azul al enfocar con teclado */
+}

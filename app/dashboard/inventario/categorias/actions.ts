@@ -35,5 +35,5 @@ export async function crearCategoria(formData: FormData) {
 
   // 4. Actualizar la vista (Revalidar)
   // Esto hace que la lista de categorías se refresque automáticamente sin recargar la página
-  revalidatePath('/dashboard/categorias')
+  revalidatePath('/dashboard/inventario')
 }

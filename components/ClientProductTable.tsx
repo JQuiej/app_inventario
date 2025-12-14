@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { Search, History } from 'lucide-react'
-import { agregarStockAction } from '@/app/dashboard/categorias/[id]/actions' // Server action que llama a SQL
+import { agregarStockAction } from '@/app/dashboard/inventario/categorias/[id]/actions' // Server action que llama a SQL
 
 export default function ClientProductTable({ initialProducts }: { initialProducts: any[] }) {
   const [filter, setFilter] = useState('')

@@ -1,0 +1,354 @@
+/* app/dashboard/inventario/[categoriaId]/page.module.css */
+
+.container {
+  padding: 1.5rem;
+  width: 100%;
+  box-sizing: border-box;
+  max-width: 100%;
+  font-family: system-ui, -apple-system, sans-serif;
+  color: #f8fafc;
+}
+
+/* --- HEADER Y CONTROLES (DISEÑO RESPONSIVO MEJORADO) --- */
+.header {
+  display: flex;
+  flex-direction: column; /* Móvil: Columna */
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+@media (min-width: 768px) {
+  .header {
+    flex-direction: row; /* PC: Fila */
+    justify-content: space-between;
+    align-items: center;
+  }
+}
+
+.titleGroup {
+  display: flex;
+  flex-direction: column;
+}
+
+.breadcrumb {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  margin-bottom: 2px;
+}
+
+.title {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #f8fafc;
+  margin: 0;
+}
+
+.controls {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap; /* Permite bajar línea si falta espacio */
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  .controls {
+    width: auto;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+  }
+}
+
+/* Corrección para alineación del Modal (que suele crear un div extra) */
+.controls > div {
+  display: flex;
+}
+
+.searchInput {
+  padding: 0.5rem 1rem;
+  height: 42px; /* Altura fija para alinear con botones */
+  border-radius: 8px;
+  border: 1px solid #334155;
+  background-color: #1e293b;
+  color: white;
+  font-size: 0.95rem;
+  box-sizing: border-box;
+  width: 100%; /* Móvil: Ancho completo */
+}
+
+@media (min-width: 768px) {
+  .searchInput {
+    width: auto;
+    min-width: 250px;
+  }
+}
+
+/* Botones generales del header */
+.controls button {
+  white-space: nowrap; /* IMPORTANTE: Evita que el texto se rompa */
+  height: 42px;
+  display: flex;
+  align-items: center;
+}
+
+/* Botón Excel */
+.excelButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background-color: #10b981;
+  color: white;
+  border: none;
+  padding: 0 1rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.excelButton:hover {
+  background-color: #059669;
+}
+
+.btnText {
+  display: none; /* Ocultar texto en móviles muy pequeños */
+}
+@media (min-width: 640px) {
+  .btnText { display: block; }
+}
+
+/* --- TABLA --- */
+.tableContainer {
+  background-color: #1e293b;
+  border-radius: 12px;
+  border: 1px solid #334155;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  overflow: hidden;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.tableWrapper {
+  width: 100%;
+  overflow-x: auto; /* Scroll horizontal automático */
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  min-width: 800px; /* Evita que la tabla se aplaste */
+}
+
+.table th {
+  padding: 1rem;
+  background-color: #0f172a;
+  color: #94a3b8;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid #334155;
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 1rem;
+  border-bottom: 1px solid #334155;
+  color: #f8fafc;
+  vertical-align: middle;
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.table tr:hover td {
+  background-color: #334155;
+}
+
+/* --- ESTILOS DE CELDAS --- */
+.sku {
+  font-family: monospace;
+  color: #94a3b8;
+  font-size: 0.85rem;
+  margin-top: 2px;
+}
+
+.price {
+  font-weight: 700;
+  color: #34d399;
+  font-family: monospace;
+  font-size: 1rem;
+}
+
+/* Badges de Stock */
+.badgeStockHigh, .badgeStockLow {
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: inline-block;
+}
+
+.badgeStockHigh {
+  background-color: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.badgeStockLow {
+  background-color: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+/* --- BOTONES DE ACCIÓN (TABLA) --- */
+.actionsCell {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  align-items: center;
+}
+
+.iconBtnAdd, .iconBtnEdit, .iconBtnDelete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: transparent;
+}
+
+.iconBtnAdd { color: #60a5fa; background-color: rgba(96, 165, 250, 0.1); }
+.iconBtnAdd:hover { background-color: #3b82f6; color: white; }
+
+.iconBtnEdit { color: #fbbf24; background-color: rgba(251, 191, 36, 0.1); }
+.iconBtnEdit:hover { background-color: #f59e0b; color: black; }
+
+.iconBtnDelete { color: #f87171; background-color: rgba(248, 113, 113, 0.1); }
+.iconBtnDelete:hover { background-color: #ef4444; color: white; }
+
+/* --- MODAL (Estilos generales) --- */
+.dialog {
+  border: none;
+  border-radius: 16px;
+  padding: 0;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  max-width: 90vw;
+  width: 500px;
+  background: transparent;
+}
+
+.dialog::backdrop {
+  background-color: rgba(15, 23, 42, 0.8);
+  backdrop-filter: blur(4px);
+}
+
+.modalContent {
+  padding: 2rem;
+  background-color: #1e293b;
+  color: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #334155;
+  padding-bottom: 1rem;
+}
+
+.modalTitle { margin: 0; font-size: 1.25rem; }
+.closeButton {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+/* Formularios del Modal */
+.formGrid { display: flex; flex-direction: column; gap: 1.25rem; }
+.formGroup { display: flex; flex-direction: column; gap: 0.5rem; }
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+.label { font-size: 0.85rem; font-weight: 600; color: #cbd5e1; }
+.input {
+  width: 100%;
+  padding: 0.75rem;
+  background-color: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  font-size: 1rem;
+  color: white;
+  box-sizing: border-box; 
+}
+.input:focus { outline: none; border-color: #3b82f6; }
+
+.submitButton {
+  background-color: #3b82f6;
+  color: white;
+  padding: 1rem;
+  border-radius: 8px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  margin-top: 1rem;
+}
+.submitButton:hover { background-color: #2563eb; }
+
+/* Estilos extra para el modal de stock */
+.productSummary {
+  background-color: #0f172a;
+  padding: 1rem;
+  border-radius: 8px;
+  border-left: 4px solid #3b82f6;
+  margin-bottom: 0.5rem;
+}
+.summaryLabel { font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; }
+.summaryValue { font-size: 1.2rem; font-weight: 700; color: white; margin: 5px 0; }
+.summarySub { font-size: 0.9rem; color: #64748b; }
+
+.totalCard {
+  background-color: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  padding: 1rem;
+  border-radius: 8px;
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 0.5rem;
+}
+.totalAmount { font-size: 1.25rem; font-weight: 800; color: #34d399; }
+
+.checkboxWrapper {
+  display: flex; align-items: center; gap: 0.75rem;
+  padding: 0.75rem;
+  background-color: rgba(59, 130, 246, 0.1);
+  border-radius: 8px;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+}
+.checkbox { width: 1.2rem; height: 1.2rem; accent-color: #3b82f6; }
+.discountPanel {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;
+  padding: 1rem;
+  background-color: #0f172a;
+  border: 1px dashed #475569;
+  border-radius: 8px;
+}
+.readonlyInput {
+  width: 100%; padding: 0.75rem;
+  background-color: #1e293b;
+  border: 1px solid #059669;
+  border-radius: 8px;
+  color: #34d399; font-weight: 700;
+  box-sizing: border-box;
+}
