@@ -1,0 +1,164 @@
+/* app/dashboard/reparaciones/reparaciones.module.css */
+
+.container {
+  padding: 1.5rem;
+  width: 100%;
+  box-sizing: border-box;
+  font-family: system-ui, -apple-system, sans-serif;
+  color: #f8fafc;
+}
+
+/* HEADER */
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+@media (min-width: 1024px) {
+  .header {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+}
+
+.title {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #f8fafc;
+  margin: 0;
+}
+
+/* CONTROLES DE FILTRO */
+.controls {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.searchWrapper, .selectWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 10px;
+  color: #94a3b8;
+  pointer-events: none;
+}
+
+.searchInput, .statusFilter {
+  background-color: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 0.6rem 1rem 0.6rem 2.2rem; /* Espacio para icono */
+  color: white;
+  font-size: 0.9rem;
+  height: 42px;
+  box-sizing: border-box;
+}
+
+.searchInput { min-width: 220px; }
+.statusFilter { cursor: pointer; }
+.searchInput:focus, .statusFilter:focus { border-color: #3b82f6; outline: none; }
+
+/* BOTÓN PRIMARIO */
+.btnPrimary {
+  background-color: #3b82f6;
+  color: white;
+  padding: 0 1.2rem;
+  height: 42px;
+  border-radius: 8px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+.btnPrimary:hover { background-color: #2563eb; }
+
+/* TABLA */
+.tableContainer {
+  background-color: #1e293b;
+  border-radius: 12px;
+  border: 1px solid #334155;
+  overflow: hidden;
+}
+.tableWrapper { overflow-x: auto; width: 100%; }
+.table { width: 100%; border-collapse: collapse; text-align: left; min-width: 900px; }
+.table th { background-color: #0f172a; color: #94a3b8; padding: 1rem; font-size: 0.75rem; font-weight: 700; border-bottom: 1px solid #334155; }
+.table td { padding: 1rem; border-bottom: 1px solid #334155; color: #e2e8f0; vertical-align: middle; }
+.table tr:hover td { background-color: rgba(59, 130, 246, 0.05); }
+
+/* ACCIONES */
+.actions { display: flex; gap: 0.5rem; justify-content: center; }
+.iconBtn { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; border-radius: 8px; border: none; cursor: pointer; transition: 0.2s; }
+
+.btnContact { background: rgba(16, 185, 129, 0.1); color: #34d399; } /* Verde para contacto */
+.btnContact:hover { background: #34d399; color: black; }
+
+.btnEdit { background: rgba(59, 130, 246, 0.1); color: #60a5fa; }
+.btnStatus { background: rgba(234, 179, 8, 0.1); color: #fbbf24; }
+.btnDelete { background: rgba(239, 68, 68, 0.1); color: #f87171; }
+
+/* BADGES ESTADOS */
+.badge { padding: 4px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 700; display: inline-block; }
+.statusPendiente { background: rgba(234, 179, 8, 0.2); color: #facc15; }
+.statusReparado { background: rgba(34, 197, 94, 0.2); color: #4ade80; }
+.statusSinSolucion { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+.statusEntregado { background: rgba(148, 163, 184, 0.2); color: #cbd5e1; }
+
+/* --- TOAST DE CONTACTO PERSONALIZADO --- */
+.contactToast {
+  background-color: #1e293b;
+  border: 1px solid #334155;
+  padding: 1.25rem;
+  border-radius: 12px;
+  color: white;
+  min-width: 280px;
+  box-shadow: 0 10px 15px -3px rgba(0,0,0,0.5);
+}
+
+.contactActions { display: flex; gap: 10px; }
+
+.btnWhatsapp {
+  flex: 1;
+  background-color: #22c55e; /* Verde WhatsApp */
+  color: white;
+  border: none;
+  padding: 0.6rem;
+  border-radius: 6px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.btnCall {
+  flex: 1;
+  background-color: #3b82f6; /* Azul Llamada */
+  color: white;
+  border: none;
+  padding: 0.6rem;
+  border-radius: 6px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* MODALES */
+.dialog { border: none; border-radius: 16px; padding: 0; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); width: 500px; max-width: 95vw; background: transparent; }
+.dialog::backdrop { background-color: rgba(15, 23, 42, 0.8); backdrop-filter: blur(4px); }
+.modalContent { background-color: #1e293b; padding: 2rem; color: white; display: flex; flex-direction: column; gap: 1.5rem; }
+.modalHeader { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; padding-bottom: 1rem; }
+.closeButton { background: transparent; border: none; color: #94a3b8; font-size: 1.5rem; cursor: pointer; }
+.formGrid { display: grid; gap: 1rem; }
+.formGroup { display: flex; flex-direction: column; gap: 0.5rem; }
+.label { font-size: 0.85rem; color: #cbd5e1; font-weight: 600; }
+.input, .textarea, .select { background-color: #0f172a; border: 1px solid #334155; padding: 0.75rem; border-radius: 8px; color: white; font-size: 0.95rem; width: 100%; box-sizing: border-box; }
+.input:focus, .textarea:focus, .select:focus { border-color: #3b82f6; outline: none; }
+.textarea { min-height: 80px; resize: vertical; }
+.submitButton { background-color: #3b82f6; color: white; padding: 1rem; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; margin-top: 1rem; }

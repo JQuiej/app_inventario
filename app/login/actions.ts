@@ -44,3 +44,16 @@ export async function signup(formData: FormData) {
   // Redirigimos con mensaje de éxito
   redirect('/login?message=check_email')
 }
+
+export async function logout() {
+  const supabase = await createClient()
+  
+  // 1. Cerrar sesión en Supabase (esto borra la cookie)
+  await supabase.auth.signOut()
+  
+  // 2. Revalidar toda la aplicación para limpiar cachés
+  revalidatePath('/', 'layout')
+  
+  // 3. Redirigir al login
+  redirect('/login')
+}

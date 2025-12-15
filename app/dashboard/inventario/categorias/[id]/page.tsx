@@ -1,8 +1,8 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
-import { Trash2, FileSpreadsheet } from 'lucide-react' // Importamos icono Excel
-import * as XLSX from 'xlsx' // Importamos la librería
+import { Trash2, FileSpreadsheet, Package, TrendingUp } from 'lucide-react'
+import * as XLSX from 'xlsx'
 import { toast } from 'sonner'
 import { agregarStock, getProductosPorCategoria, getCategoriaNombre } from '@/actions/inventario'
 import { crearProductoCompleto, eliminarProducto, editarProducto } from './actions'
@@ -17,21 +17,31 @@ export default function ProductosPage() {
   const categoriaId = Array.isArray(rawId) ? rawId[0] : rawId
 
   const [productos, setProductos] = useState<any[]>([])
-  const [nombreCategoria, setNombreCategoria] = useState('Cargando...') // Nuevo Estado
+  const [nombreCategoria, setNombreCategoria] = useState('Cargando...')
   const [busqueda, setBusqueda] = useState('')
   const [loading, setLoading] = useState(true)
+  
+  // Nuevo estado para el total
+  const [totalInvertido, setTotalInvertido] = useState(0)
 
   const cargarDatos = () => {
     if (!categoriaId) return
     setLoading(true)
     
-    // Cargamos Productos y Nombre de Categoría en paralelo
     Promise.all([
       getProductosPorCategoria(categoriaId),
       getCategoriaNombre(categoriaId)
     ]).then(([prodData, catName]) => {
-      setProductos(prodData || [])
+      const data = prodData || []
+      setProductos(data)
       setNombreCategoria(catName || 'Inventario')
+      
+      // CALCULAR TOTAL INVERTIDO: Suma de (Stock * Costo Promedio) de cada producto
+      const total = data.reduce((acc: number, p: any) => {
+        return acc + (p.stock_actual * p.costo_promedio)
+      }, 0)
+      setTotalInvertido(total)
+
       setLoading(false)
     })
   }
@@ -45,26 +55,22 @@ export default function ProductosPage() {
     p.sku?.includes(busqueda)
   )
 
-  // --- FUNCIÓN PARA EXPORTAR A EXCEL ---
   const handleExportExcel = () => {
     if (productosFiltrados.length === 0) return toast.error("No hay datos para exportar")
 
-    // 1. Formatear datos para que se vean bonitos en Excel
     const dataToExport = productosFiltrados.map(p => ({
       Producto: p.nombre,
       SKU: p.sku || 'N/A',
       'Stock Actual': p.stock_actual,
       'Costo Promedio (Q)': p.costo_promedio,
       'Precio Venta (Q)': p.precio_venta,
-      'Valor Total Inventario (Q)': p.stock_actual * p.costo_promedio // Dato extra útil
+      'Valor Total Inventario (Q)': p.stock_actual * p.costo_promedio
     }))
 
-    // 2. Crear hoja de trabajo
     const worksheet = XLSX.utils.json_to_sheet(dataToExport)
     const workbook = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(workbook, worksheet, "Inventario")
 
-    // 3. Descargar archivo
     const fecha = new Date().toLocaleDateString().replace(/\//g, '-')
     XLSX.writeFile(workbook, `Inventario_${nombreCategoria}_${fecha}.xlsx`)
     toast.success("Excel descargado correctamente")
@@ -79,7 +85,7 @@ export default function ProductosPage() {
           if (categoriaId) {
             try {
               await eliminarProducto(productoId, categoriaId)
-              await cargarDatos()
+              await cargarDatos() // Recargar para actualizar el total invertido
               toast.success('Producto eliminado')
             } catch (error) {
               toast.error('Error al eliminar')
@@ -100,7 +106,6 @@ export default function ProductosPage() {
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        {/* AHORA MOSTRAMOS EL NOMBRE DE LA CATEGORÍA */}
         <div className={styles.titleGroup}>
             <span className={styles.breadcrumb}>Inventario /</span>
             <h1 className={styles.title}>{nombreCategoria}</h1>
@@ -114,7 +119,6 @@ export default function ProductosPage() {
             onChange={(e) => setBusqueda(e.target.value)}
           />
           
-          {/* BOTÓN EXCEL */}
           <button 
             onClick={handleExportExcel} 
             className={styles.excelButton}
@@ -128,9 +132,40 @@ export default function ProductosPage() {
             categoriaId={categoriaId} 
             crearProductoCompleto={async (formData) => {
                 await crearProductoCompleto(formData)
-                cargarDatos()
+                cargarDatos() // Recargar para actualizar lista y total
             }} 
           />
+        </div>
+      </div>
+
+      {/* --- NUEVA TARJETA DE RESUMEN DE INVERSIÓN --- */}
+      <div style={{
+        backgroundColor: '#1e293b', 
+        padding: '1.5rem', 
+        borderRadius: '12px', 
+        border: '1px solid #334155',
+        marginBottom: '2rem',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        maxWidth: '400px'
+      }}>
+        <div>
+            <div style={{color:'#94a3b8', fontSize:'0.9rem', fontWeight:'600', textTransform:'uppercase'}}>
+                Valor del Inventario
+            </div>
+            <div style={{fontSize:'2rem', fontWeight:'800', color:'#34d399', lineHeight:'1.2'}}>
+                Q{totalInvertido.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+            </div>
+        </div>
+        <div style={{
+            backgroundColor: 'rgba(52, 211, 153, 0.1)', 
+            padding:'12px', 
+            borderRadius:'12px',
+            color: '#34d399'
+        }}>
+            {/* Ícono de Inversión / Crecimiento */}
+            <TrendingUp size={32} strokeWidth={2.5} />
         </div>
       </div>
 
@@ -172,7 +207,7 @@ export default function ProductosPage() {
                         producto={prod}
                         agregarStockAction={async (id, cant, cost) => {
                           await agregarStock(id, cant, cost)
-                          cargarDatos()
+                          cargarDatos() // Recargar para actualizar stock y total dinero
                         }}
                       />
                       <EditProductModal 

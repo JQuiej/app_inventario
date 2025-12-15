@@ -124,7 +124,7 @@ export default function CreateProductModal({
             
             {/* INPUT SKU CON BOTÓN DE CÁMARA */}
             <div className={styles.formGroup}>
-              <label className={styles.label}>SKU / IMEI / Código de Barras</label>
+              <label className={styles.label}>SKU / Código de Barras</label>
               <div className={styles.inputWithAction}>
                 <input 
                   name="sku" 

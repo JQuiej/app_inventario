@@ -1,7 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { Toaster } from 'sonner'; // 1. Importado correctamente
+import { Toaster } from 'sonner';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,8 +14,18 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Mastercell Inventario",
+  title: "Inventario",
   description: "Sistema de gestión de inventario",
+  manifest: "/manifest.json", // <-- Importante para PWA
+};
+
+// Configuración visual para móviles (PWA)
+export const viewport: Viewport = {
+  themeColor: "#0f172a", // El color de la barra de estado en el cel
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false, // Evita que hagan zoom a los botones por error
 };
 
 export default function RootLayout({
@@ -30,7 +40,6 @@ export default function RootLayout({
       >
         {children}
         
-        {/* 2. AQUÍ AGREGAMOS EL COMPONENTE PARA QUE SE VEAN LAS NOTIFICACIONES */}
         <Toaster position="top-center" richColors />
       </body>
     </html>

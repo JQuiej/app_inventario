@@ -1,0 +1,173 @@
+/* app/dashboard/estadisticas/estadisticas.module.css */
+
+.container {
+  padding: 1.5rem;
+  width: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
+  font-family: system-ui, -apple-system, sans-serif;
+  color: #f8fafc;
+  box-sizing: border-box;
+}
+
+/* --- HEADER --- */
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+@media (min-width: 768px) {
+  .header {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+}
+
+.title {
+  font-size: 2rem;
+  font-weight: 800;
+  margin: 0;
+  color: #f8fafc;
+}
+
+/* FILTROS (Selectores) */
+.filters {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap; /* Permite que bajen en móviles */
+}
+
+.selectWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.iconInput {
+  position: absolute;
+  left: 10px;
+  color: #94a3b8;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.select {
+  background-color: #1e293b;
+  border: 1px solid #334155;
+  color: white;
+  padding: 0.6rem 1rem 0.6rem 2.5rem; /* Espacio a la izquierda para el icono */
+  border-radius: 8px;
+  cursor: pointer;
+  outline: none;
+  font-size: 0.9rem;
+  min-width: 140px;
+}
+
+.select:focus {
+  border-color: #3b82f6;
+}
+
+/* --- PESTAÑAS (TABS) --- */
+.tabsContainer {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+  border-bottom: 1px solid #334155;
+  padding-bottom: 1rem;
+  overflow-x: auto; /* Scroll horizontal en móviles si no caben */
+}
+
+.tabButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0.6rem 1.2rem;
+  border-radius: 8px;
+  background-color: transparent;
+  color: #94a3b8;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.tabButton:hover {
+  background-color: rgba(59, 130, 246, 0.1);
+  color: #cbd5e1;
+}
+
+.tabActive {
+  background-color: #3b82f6;
+  color: white;
+}
+
+.tabActive:hover {
+  background-color: #2563eb;
+  color: white;
+}
+
+/* --- TARJETAS FINANCIERAS (GRID) --- */
+.cardsGrid {
+  display: grid;
+  /* Esto hace la magia: crea columnas automáticas de mínimo 300px */
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.card {
+  background-color: #1e293b;
+  padding: 1.5rem;
+  border-radius: 12px;
+  border: 1px solid #334155;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.cardTitle {
+  color: #94a3b8;
+  font-size: 0.85rem;
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.cardValue {
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: #f8fafc;
+}
+
+/* Tarjeta especial de Ganancia */
+.cardProfit {
+  background: linear-gradient(135deg, #064e3b 0%, #065f46 100%);
+  border: 1px solid #059669;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+}
+
+.cardProfit .cardTitle {
+  color: #a7f3d0;
+}
+
+/* --- GRÁFICAS --- */
+.chartsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 2rem;
+}
+
+/* En móviles, forzamos que las gráficas ocupen todo el ancho disponible */
+@media (max-width: 640px) {
+  .chartsGrid {
+    grid-template-columns: 1fr;
+  }
+}
