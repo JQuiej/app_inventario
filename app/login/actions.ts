@@ -9,9 +9,27 @@ export async function login(formData: FormData) {
     email: formData.get('email') as string,
     password: formData.get('password') as string,
   }
-  const { error } = await supabase.auth.signInWithPassword(data)
+  
+  // 1. Intentar iniciar sesión
+  const { data: authData, error } = await supabase.auth.signInWithPassword(data)
   if (error) redirect('/login?error=true')
   
+  // 2. Verificar el ROL del usuario antes de redirigir
+  if (authData.user) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', authData.user.id)
+      .single()
+
+    // Si es técnico, lo mandamos directo a reparaciones
+    if (profile?.role === 'tecnico') {
+      revalidatePath('/', 'layout')
+      redirect('/dashboard/reparaciones')
+    }
+  }
+  
+  // 3. Si no es técnico (es Admin/Dueño), va al Dashboard general
   revalidatePath('/', 'layout')
   redirect('/dashboard')
 }

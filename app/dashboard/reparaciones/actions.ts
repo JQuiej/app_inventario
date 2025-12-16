@@ -68,7 +68,7 @@ export async function crearReparacion(formData: FormData) {
     // FECHAS Y ESTADO
     estado: 'Pendiente',
     fecha_recepcion: fechaRecepcion,          // <--- NUEVO CAMPO
-    ultimo_cambio_estado: new Date().toISOString() // <--- NUEVO CAMPO (Inicia hoy)
+    ultimo_cambio_estado: fechaRecepcion // <--- NUEVO CAMPO (Inicia hoy)
   }
 
   await supabase.from('reparaciones').insert(data)
