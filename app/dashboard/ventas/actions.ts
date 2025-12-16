@@ -2,12 +2,18 @@
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 
-// 1. Obtener productos (Stock > 0)
+// 1. Obtener productos (Stock > 0) (CORREGIDO)
 export async function getProductosParaVenta() {
   const supabase = await createClient()
+  
+  // Verificar usuario
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
   const { data, error } = await supabase
     .from('productos')
     .select('*')
+    .eq('usuario_id', user.id) // <--- FILTRO DE SEGURIDAD
     .gt('stock_actual', 0)
     .order('nombre')
   
@@ -15,13 +21,16 @@ export async function getProductosParaVenta() {
   return data
 }
 
-// 2. Obtener historial filtrado
+// 2. Obtener historial filtrado (CORREGIDO)
 export async function getHistorialFiltrado(fechaInicio: string, fechaFin: string) {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
   
   const { data, error } = await supabase
     .from('movimientos_inventario')
     .select('*, productos(nombre)') 
+    .eq('usuario_id', user.id) // <--- FILTRO DE SEGURIDAD
     .eq('tipo_movimiento', 'SALIDA')
     .gte('creado_en', fechaInicio)
     .lte('creado_en', fechaFin)

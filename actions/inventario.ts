@@ -20,52 +20,52 @@ const getSupabase = async () => {
   )
 }
 
-// 1. Obtener Categorías (CORREGIDO)
+// 1. Obtener Categorías (CORREGIDO: Exclusivo del usuario)
 export async function getCategorias() {
-  const supabase = await createClient() // Usamos createClient directo para consistencia
+  const supabase = await createClient()
   
-  // 1. Verificar usuario
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return []
 
-  // 2. Filtrar por usuario_id
   const { data } = await supabase
     .from('categorias')
     .select('*')
-    .eq('usuario_id', user.id) // <--- ESTA LÍNEA ES CLAVE
+    .eq('usuario_id', user.id) // Filtro de seguridad
     .order('nombre')
     
   return data
 }
 
+// CORREGIDO: Ahora verifica que la categoría pertenezca al usuario antes de dar el nombre
 export async function getCategoriaNombre(categoriaId: string) {
   const supabase = await createClient()
-  // No es estrictamente necesario filtrar por usuario aquí si solo es el nombre, 
-  // pero es buena práctica para no revelar nombres de categorías ajenas.
+  const { data: { user } } = await supabase.auth.getUser()
+  
+  if (!user) return "Desconocido"
+
   const { data, error } = await supabase
     .from('categorias')
     .select('nombre')
     .eq('id', categoriaId)
+    .eq('usuario_id', user.id) // Agregamos este filtro
     .single()
 
-  if (error || !data) return "Categoría"
+  if (error || !data) return "Categoría no encontrada"
   return data.nombre
 }
 
-// 2. Obtener Productos por Categoría (CORREGIDO)
+// 2. Obtener Productos por Categoría (CORREGIDO: Exclusivo del usuario)
 export async function getProductosPorCategoria(categoriaId: string) {
   const supabase = await createClient()
   
-  // 1. Verificar usuario
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return []
 
-  // 2. Consulta filtrada
   const { data, error } = await supabase
     .from('productos')
     .select('*')
     .eq('categoria_id', categoriaId)
-    .eq('usuario_id', user.id) // <--- ESTA LÍNEA EVITA VER DATOS DE OTROS
+    .eq('usuario_id', user.id) // Filtro de seguridad
     .order('nombre', { ascending: true })
 
   if (error) {
@@ -75,13 +75,13 @@ export async function getProductosPorCategoria(categoriaId: string) {
 
   return data
 }
-// 3. AGREGAR STOCK (IMPORTANTE: Usamos la tabla de movimientos)
+
+// 3. AGREGAR STOCK (Correcto, inserta con ID de usuario)
 export async function agregarStock(productoId: string, cantidad: number, costoUnitario: number) {
   const supabase = await getSupabase()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('No autenticado')
 
-  // Insertamos en movimientos, el Trigger de SQL actualizará el stock y el costo promedio solo
   const { error } = await supabase.from('movimientos_inventario').insert({
     usuario_id: user.id,
     producto_id: productoId,
@@ -94,21 +94,27 @@ export async function agregarStock(productoId: string, cantidad: number, costoUn
   return { success: !error }
 }
 
-// 4. Estadísticas (Dashboard)
+// 4. Estadísticas (CORREGIDO: Ahora solo cuenta datos del usuario)
 export async function getEstadisticas() {
   const supabase = await getSupabase()
+  const { data: { user } } = await supabase.auth.getUser()
   
-  // Total Productos
-  const { count: totalProductos } = await supabase.from('productos').select('*', { count: 'exact', head: true })
+  if (!user) return { totalProductos: 0, totalVendido: 0 }
   
-  // Total Ventas (Suma de salidas)
-  // Nota: Esto es mejor hacerlo con una RPC en Supabase, pero aquí lo haremos simple filtrando
+  // Total Productos (Solo del usuario)
+  const { count: totalProductos } = await supabase
+    .from('productos')
+    .select('*', { count: 'exact', head: true })
+    .eq('usuario_id', user.id) // Filtro agregado
+  
+  // Total Ventas (Solo del usuario)
   const { data: ventas } = await supabase
     .from('movimientos_inventario')
     .select('cantidad, precio_real_venta')
+    .eq('usuario_id', user.id) // Filtro agregado
     .eq('tipo_movimiento', 'SALIDA')
 
   const totalVendido = ventas?.reduce((acc, curr) => acc + (curr.cantidad * (curr.precio_real_venta || 0)), 0) || 0
 
-  return { totalProductos, totalVendido }
+  return { totalProductos: totalProductos || 0, totalVendido }
 }
