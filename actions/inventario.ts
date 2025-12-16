@@ -20,56 +20,58 @@ const getSupabase = async () => {
   )
 }
 
-// 1. Obtener Categorías
+// 1. Obtener Categorías (CORREGIDO)
 export async function getCategorias() {
-  const supabase = await getSupabase()
-  const { data } = await supabase.from('categorias').select('*').order('nombre')
+  const supabase = await createClient() // Usamos createClient directo para consistencia
+  
+  // 1. Verificar usuario
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
+  // 2. Filtrar por usuario_id
+  const { data } = await supabase
+    .from('categorias')
+    .select('*')
+    .eq('usuario_id', user.id) // <--- ESTA LÍNEA ES CLAVE
+    .order('nombre')
+    
   return data
 }
 
-// Agrega esto al final de actions/inventario.ts
-
 export async function getCategoriaNombre(categoriaId: string) {
   const supabase = await createClient()
+  // No es estrictamente necesario filtrar por usuario aquí si solo es el nombre, 
+  // pero es buena práctica para no revelar nombres de categorías ajenas.
   const { data, error } = await supabase
     .from('categorias')
     .select('nombre')
     .eq('id', categoriaId)
     .single()
 
-  if (error || !data) return "Categoría Desconocida"
+  if (error || !data) return "Categoría"
   return data.nombre
 }
 
-// 2. Obtener Productos por Categoría
+// 2. Obtener Productos por Categoría (CORREGIDO)
 export async function getProductosPorCategoria(categoriaId: string) {
-  // 1. Logs iniciales para ver qué llega al servidor
-  console.log("--- DEBUG SERVER ---")
-  console.log("Buscando productos para categoría:", categoriaId)
-
   const supabase = await createClient()
   
-  // 2. Verificamos si hay usuario (solo informativo por ahora)
+  // 1. Verificar usuario
   const { data: { user } } = await supabase.auth.getUser()
-  console.log("Usuario autenticado:", user?.id || "NO HAY USUARIO")
+  if (!user) return []
 
-  // 3. LA CONSULTA (Modificada para DEBUG)
-  // Comentamos el filtro de usuario para ver SI EXISTEN los productos
+  // 2. Consulta filtrada
   const { data, error } = await supabase
     .from('productos')
     .select('*')
     .eq('categoria_id', categoriaId)
-    // .eq('usuario_id', user?.id)  <-- COMENTADO TEMPORALMENTE PARA PROBAR
+    .eq('usuario_id', user.id) // <--- ESTA LÍNEA EVITA VER DATOS DE OTROS
     .order('nombre', { ascending: true })
 
   if (error) {
     console.error('ERROR SQL:', error)
     return []
   }
-
-  console.log(`Encontrados ${data?.length} productos en la DB`)
-  console.log("Datos:", data)
-  console.log("--------------------")
 
   return data
 }
