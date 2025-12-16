@@ -1,9 +1,10 @@
-/* app/dashboard/inventario/categorias.module.css */
+/* app/dashboard/inventario/categorias/categorias.module.css */
 
 .container {
   padding: 1.5rem;
   width: 100%;
-  max-width: 100%;
+  max-width: 1400px; /* Limite para pantallas gigantes */
+  margin: 0 auto;
   box-sizing: border-box;
   font-family: system-ui, -apple-system, sans-serif;
   color: #f8fafc;
@@ -13,9 +14,9 @@
 .header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2.5rem;
-  flex-wrap: wrap; /* Para que baje en celular */
+  align-items: flex-end; /* Alinea abajo para que el botón coincida con el texto */
+  margin-bottom: 2rem;
+  flex-wrap: wrap; 
   gap: 1.5rem;
 }
 
@@ -36,6 +37,7 @@
 .form {
   display: flex;
   gap: 0.75rem;
+  align-items: center;
 }
 
 .input {
@@ -46,7 +48,8 @@
   color: white;
   font-size: 0.9rem;
   outline: none;
-  min-width: 200px;
+  min-width: 250px; /* Un poco más ancho en escritorio */
+  transition: border-color 0.2s;
 }
 
 .input:focus {
@@ -65,6 +68,7 @@
   align-items: center;
   gap: 0.5rem;
   cursor: pointer;
+  white-space: nowrap; /* Evita que el texto se parta */
   transition: background-color 0.2s;
 }
 
@@ -72,21 +76,21 @@
   background-color: #2563eb;
 }
 
-/* --- GRID DE CATEGORÍAS (Responsivo Automático) --- */
+/* --- GRID DE CATEGORÍAS --- */
 .grid {
   display: grid;
-  /* Esto crea columnas automáticas que miden mínimo 260px */
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  /* Columnas flexibles: mínimo 280px, si hay espacio se expanden */
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 1.5rem;
 }
 
 /* --- TARJETAS (CARDS) --- */
 .card {
-  background-color: #1e293b; /* Fondo oscuro */
+  background-color: #1e293b;
   border: 1px solid #334155;
-  border-radius: 16px;
+  border-radius: 12px;
   padding: 1.5rem;
-  display: block; /* Importante para el Link */
+  display: block;
   text-decoration: none;
   transition: all 0.2s ease;
   position: relative;
@@ -95,7 +99,7 @@
 
 .card:hover {
   transform: translateY(-4px);
-  border-color: #3b82f6; /* Borde azul al pasar mouse */
+  border-color: #3b82f6;
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
 }
 
@@ -110,11 +114,10 @@
   font-weight: 700;
   color: #f1f5f9;
   margin: 0;
-  transition: color 0.2s;
 }
 
 .card:hover .cardTitle {
-  color: #60a5fa; /* Título azul al pasar mouse */
+  color: #60a5fa;
 }
 
 .iconChevron {
@@ -130,4 +133,40 @@
   margin-top: 1rem;
   font-size: 0.8rem;
   color: #64748b;
+}
+
+/* =========================================
+   RESPONSIVE (MÓVIL) 
+   ========================================= */
+@media (max-width: 640px) {
+  .header {
+    flex-direction: column; /* Apilar Título y Formulario */
+    align-items: stretch;   /* Estirar al ancho completo */
+    gap: 1.5rem;
+  }
+
+  .titleSection {
+    text-align: left; /* Opcional: center si prefieres */
+  }
+
+  .form {
+    flex-direction: column; /* Apilar Input y Botón */
+    width: 100%;
+  }
+
+  .input {
+    width: 100%;     /* Ocupar todo el ancho */
+    min-width: 0;    /* Eliminar el mínimo para evitar desbordes */
+    box-sizing: border-box; /* Asegura que el padding no rompa el ancho */
+  }
+
+  .addButton {
+    width: 100%;     /* Botón ancho completo */
+    justify-content: center;
+    padding: 1rem;   /* Más fácil de tocar con el dedo */
+  }
+
+  .grid {
+    grid-template-columns: 1fr; /* Una sola columna en móvil */
+  }
 }

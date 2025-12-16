@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
-import { Plus, Pencil, Trash2, RefreshCcw, Phone, Search, Filter, Wallet } from 'lucide-react'
+import { Plus, Pencil, Trash2, RefreshCcw, Phone, Search, Filter, Wallet, Calendar, Clock } from 'lucide-react'
 import { toast } from 'sonner'
 import { getReparaciones, crearReparacion, actualizarEstado, eliminarReparacion, editarReparacion } from './actions'
 import styles from './reparaciones.module.css'
@@ -63,6 +63,20 @@ export default function ReparacionesPage() {
     ), { duration: 5000 })
   }
 
+  // --- CALCULO DE TIEMPO ---
+  function calcularTiempo(fecha: string) {
+    if (!fecha) return '-'
+    const diff = new Date().getTime() - new Date(fecha).getTime();
+    const dias = Math.floor(diff / (1000 * 3600 * 24));
+    
+    if (dias === 0) {
+        const horas = Math.floor(diff / (1000 * 3600));
+        if (horas === 0) return 'Hace un momento';
+        return `Hace ${horas}h`;
+    }
+    return `Hace ${dias} días`;
+  }
+
   const handleDelete = (id: string) => {
     toast('¿Eliminar registro?', {
       action: { label: 'Eliminar', onClick: async () => { await eliminarReparacion(id); cargarDatos(); toast.success('Eliminado') } },
@@ -103,7 +117,7 @@ export default function ReparacionesPage() {
           <table className={styles.table}>
             <thead>
               <tr>
-                <th>Cliente / Equipo</th>
+                <th>Cliente / Recepción</th>
                 <th>Falla / Categoría</th>
                 <th>Estado</th>
                 <th style={{textAlign:'right'}}>Costo Reparacion</th>
@@ -121,7 +135,15 @@ export default function ReparacionesPage() {
                 <tr key={rep.id}>
                   <td>
                     <div style={{fontWeight:'bold', color:'white'}}>{rep.cliente_nombre}</div>
-                    <div style={{fontSize:'0.8rem', color:'#94a3b8'}}>{rep.dispositivo}</div>
+                    <div style={{fontSize:'0.8rem', color:'#cbd5e1'}}>{rep.dispositivo}</div>
+                    {/* FECHA DE RECEPCIÓN */}
+                    <div style={{fontSize:'0.75rem', color:'#64748b', marginTop:'4px', display:'flex', alignItems:'center', gap:'4px'}}>
+                        <Calendar size={12}/> 
+                        {rep.fecha_recepcion ? new Date(rep.fecha_recepcion).toLocaleDateString() : 'N/A'}
+                        <span style={{fontSize:'0.7rem'}}>
+                             {rep.fecha_recepcion ? new Date(rep.fecha_recepcion).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : ''}
+                        </span>
+                    </div>
                   </td>
                   <td>
                     <span style={{fontSize:'0.75rem', background:'#334155', padding:'2px 6px', borderRadius:'4px', color:'#cbd5e1'}}>
@@ -133,20 +155,44 @@ export default function ReparacionesPage() {
                     <span className={`${styles.badge} ${styles['status' + rep.estado.replace(' ', '')]}`}>
                       {rep.estado}
                     </span>
+                    {/* TIEMPO DESDE ÚLTIMO CAMBIO */}
+                    <div style={{fontSize:'0.7rem', color:'#64748b', marginTop:'4px', display:'flex', alignItems:'center', gap:'4px'}}>
+                        <Clock size={12}/>
+                        {calcularTiempo(rep.ultimo_cambio_estado || rep.created_at)}
+                    </div>
                   </td>
                   <td style={{textAlign:'right', color:'#94a3b8'}}>Q{rep.cotizacion}</td>
+                  
+                  {/* COLUMNA FINANCIERA (CON ADELANTOS) */}
                   <td style={{textAlign:'right'}}>
                     {rep.precio > 0 ? (
                         <div>
                             <div style={{color:'#34d399', fontWeight:'bold'}}>Q{rep.precio}</div>
-                            {rep.comision > 0 && (
-                                <div style={{fontSize:'0.7rem', color:'#f87171'}} title="Comisión descontada">
-                                    - Q{rep.comision}
+                            
+                            {/* Mostrar Adelanto si existe */}
+                            {rep.adelanto > 0 && (
+                                <div style={{fontSize:'0.7rem', color:'#60a5fa'}}>
+                                    Adelanto: -Q{rep.adelanto}
+                                </div>
+                            )}
+
+                            {/* Restante a Pagar */}
+                            <div style={{fontSize:'0.75rem', color:'#e2e8f0', borderTop:'1px solid #334155', marginTop:'2px', paddingTop:'2px'}}>
+                                Resta: <b>Q{(rep.precio - (rep.adelanto || 0)).toFixed(2)}</b>
+                            </div>
+                        </div>
+                    ) : (
+                        <div>
+                            <span style={{color:'#64748b'}}>-</span>
+                            {rep.adelanto > 0 && (
+                                <div style={{fontSize:'0.7rem', color:'#60a5fa'}}>
+                                    Abono: Q{rep.adelanto}
                                 </div>
                             )}
                         </div>
-                    ) : <span style={{color:'#64748b'}}>-</span>}
+                    )}
                   </td>
+                  
                   <td>
                     <div className={styles.actions}>
                       <button onClick={() => handleContactar(rep.cliente_nombre, rep.cliente_telefono)} className={`${styles.iconBtn} ${styles.btnContact}`}>
@@ -172,6 +218,11 @@ export default function ReparacionesPage() {
 // --- MODAL: NUEVO INGRESO ---
 function NewRepairModal({ onSave }: { onSave: () => void }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
+
+  // Fecha actual por defecto para el input datetime-local
+  const defaultDate = new Date();
+  defaultDate.setMinutes(defaultDate.getMinutes() - defaultDate.getTimezoneOffset());
+  const defaultDateString = defaultDate.toISOString().slice(0, 16);
 
   return (
     <>
@@ -202,10 +253,13 @@ function NewRepairModal({ onSave }: { onSave: () => void }) {
                     <input name="cliente_telefono" className={styles.input} placeholder="5555-5555" />
                 </div>
                 <div className={styles.formGroup}>
-                    <label className={styles.label}>Categoría</label>
-                    <select name="categoria" className={styles.select}>
-                        {CATEGORIAS_REPARACION.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                    </select>
+                    <label className={styles.label}>Fecha Recepción</label>
+                    <input 
+                        name="fecha_recepcion" 
+                        type="datetime-local" 
+                        defaultValue={defaultDateString}
+                        className={styles.input} 
+                    />
                 </div>
             </div>
 
@@ -214,20 +268,40 @@ function NewRepairModal({ onSave }: { onSave: () => void }) {
               <input name="dispositivo" className={styles.input} required placeholder="Marca y Modelo" />
             </div>
 
-            <div className={styles.formGroup}>
-              <label className={styles.label}>Falla Reportada</label>
-              <textarea name="falla" className={styles.textarea} required />
+            <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem'}}>
+                 <div className={styles.formGroup}>
+                    <label className={styles.label}>Categoría</label>
+                    <select name="categoria" className={styles.select}>
+                        {CATEGORIAS_REPARACION.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                    </select>
+                </div>
+                <div className={styles.formGroup}>
+                    <label className={styles.label}>Falla Reportada</label>
+                    <input name="falla" className={styles.input} required placeholder="Pantalla rota..." />
+                </div>
             </div>
 
-            <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem'}}>
-                <div className={styles.formGroup}>
-                    <label className={styles.label}>Costo Reparacion (Q)</label>
-                    <input name="cotizacion" type="number" step="0.01" className={styles.input} placeholder="0.00" />
+            <div style={{background:'rgba(59, 130, 246, 0.05)', padding:'1rem', borderRadius:'8px', marginTop:'0.5rem', border:'1px solid #334155'}}>
+                <div style={{fontWeight:'bold', color:'#94a3b8', marginBottom:'0.5rem', fontSize:'0.85rem'}}>ESTIMACIÓN DE COSTOS</div>
+                <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'1rem'}}>
+                    <div className={styles.formGroup}>
+                        <label className={styles.label}>Costo Reparacion</label>
+                        <input name="cotizacion" type="number" step="0.01" className={styles.input} placeholder="0.00" />
+                    </div>
+                    <div className={styles.formGroup}>
+                        <label className={styles.label}>Precio Cliente</label>
+                        <input name="precio" type="number" step="0.01" className={styles.input} placeholder="0.00" />
+                    </div>
+                    <div className={styles.formGroup}>
+                        <label className={styles.label} style={{color:'#60a5fa'}}>Adelanto</label>
+                        <input name="adelanto" type="number" step="0.01" className={styles.input} placeholder="0.00" />
+                    </div>
                 </div>
-                <div className={styles.formGroup}>
-                    <label className={styles.label}>Precio Final (Q)</label>
-                    <input name="precio" type="number" step="0.01" className={styles.input} placeholder="Opcional" />
-                </div>
+            </div>
+
+            <div className={styles.formGroup}>
+                <label className={styles.label}>Observaciones</label>
+                <textarea name="observaciones" className={styles.textarea} rows={2} />
             </div>
 
             <button type="submit" className={styles.submitButton}>Registrar</button>
@@ -242,6 +316,11 @@ function NewRepairModal({ onSave }: { onSave: () => void }) {
 function EditRepairModal({ reparacion, onUpdate }: { reparacion: any, onUpdate: () => void }) {
     const dialogRef = useRef<HTMLDialogElement>(null)
   
+    // Formatear fecha para el input datetime-local
+    const fechaRecepcionStr = reparacion.fecha_recepcion 
+        ? new Date(new Date(reparacion.fecha_recepcion).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)
+        : '';
+
     return (
       <>
         <button onClick={() => dialogRef.current?.showModal()} className={`${styles.iconBtn} ${styles.btnEdit}`} title="Editar / Cobrar">
@@ -262,12 +341,17 @@ function EditRepairModal({ reparacion, onUpdate }: { reparacion: any, onUpdate: 
               <input type="hidden" name="id" value={reparacion.id} />
               
               {/* DATOS GENERALES */}
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Dispositivo</label>
-                <input name="dispositivo" defaultValue={reparacion.dispositivo} className={styles.input} required />
+              <div style={{display:'grid', gridTemplateColumns:'2fr 1fr', gap:'1rem'}}>
+                  <div className={styles.formGroup}>
+                    <label className={styles.label}>Dispositivo</label>
+                    <input name="dispositivo" defaultValue={reparacion.dispositivo} className={styles.input} required />
+                  </div>
+                  <div className={styles.formGroup}>
+                     <label className={styles.label}>Recepción</label>
+                     <input name="fecha_recepcion" type="datetime-local" defaultValue={fechaRecepcionStr} className={styles.input} />
+                  </div>
               </div>
 
-              {/* CORRECCIÓN AQUÍ: Agregamos el teléfono en el grid */}
               <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem'}}>
                   <div className={styles.formGroup}>
                       <label className={styles.label}>Cliente</label>
@@ -279,7 +363,6 @@ function EditRepairModal({ reparacion, onUpdate }: { reparacion: any, onUpdate: 
                   </div>
               </div>
 
-              {/* La categoría la movemos abajo para que tenga espacio */}
               <div className={styles.formGroup}>
                   <label className={styles.label}>Categoría</label>
                   <select name="categoria" defaultValue={reparacion.categoria} className={styles.select}>
@@ -298,13 +381,19 @@ function EditRepairModal({ reparacion, onUpdate }: { reparacion: any, onUpdate: 
                         <input name="precio" type="number" step="0.01" defaultValue={reparacion.precio} className={styles.input} placeholder="Cobro al cliente" />
                     </div>
                     <div className={styles.formGroup}>
-                        <label className={styles.label}>Comisión (Q)</label>
-                        <input name="comision" type="number" step="0.01" defaultValue={reparacion.comision} className={styles.input} placeholder="comision por recepcion" />
+                        <label className={styles.label}>Adelanto (Q)</label>
+                        <input name="adelanto" type="number" step="0.01" defaultValue={reparacion.adelanto} className={styles.input} placeholder="Anticipo" />
                     </div>
                   </div>
-                  <div className={styles.formGroup} style={{marginTop:'0.5rem'}}>
-                      <label className={styles.label}>Costo de Reparacion</label>
-                      <input name="cotizacion" type="number" step="0.01" defaultValue={reparacion.cotizacion} className={styles.input} />
+                  <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem', marginTop:'0.5rem'}}>
+                    <div className={styles.formGroup}>
+                        <label className={styles.label}>Costo Reparacion</label>
+                        <input name="cotizacion" type="number" step="0.01" defaultValue={reparacion.cotizacion} className={styles.input} />
+                    </div>
+                    <div className={styles.formGroup}>
+                        <label className={styles.label}>Comisión (Q)</label>
+                        <input name="comision" type="number" step="0.01" defaultValue={reparacion.comision} className={styles.input} placeholder="Mano de obra" />
+                    </div>
                   </div>
               </div>
 
@@ -325,14 +414,18 @@ function EditRepairModal({ reparacion, onUpdate }: { reparacion: any, onUpdate: 
     )
   }
 
-// --- MODAL: CAMBIAR ESTADO (Mismo de antes) ---
-function StatusModal({ reparacion, onUpdate }: { reparacion: any, onUpdate: () => void }) {
-  const dialogRef = useRef<HTMLDialogElement>(null)
+// --- MODAL: CAMBIAR ESTADO ---
+function StatusModal({ reparacion, onUpdate }: { reparacion: any, onUpdate: () => void }) {  const dialogRef = useRef<HTMLDialogElement>(null)
   const [estado, setEstado] = useState(reparacion.estado)
   const [nota, setNota] = useState('')
 
   const handleUpdate = async () => {
-    await actualizarEstado(reparacion.id, estado, nota)
+    // 1. Capturamos la hora exacta del dispositivo en este momento
+    const fechaDispositivo = new Date().toISOString()
+
+    // 2. La enviamos a la función
+    await actualizarEstado(reparacion.id, estado, nota, fechaDispositivo)
+    
     onUpdate()
     setNota('')
     dialogRef.current?.close()

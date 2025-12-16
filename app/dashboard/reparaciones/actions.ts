@@ -37,47 +37,67 @@ export async function getReparaciones() {
 // 2. Crear nueva reparación (CORREGIDO)
 export async function crearReparacion(formData: FormData) {
   const supabase = await createClient()
-  const targetId = await getTargetUserId(supabase) // <--- Usamos el ID objetivo
-  if (!targetId) return
+  
+  // Aquí usamos la lógica de usuario/dueño que hicimos antes
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return
+
+  // Buscamos el ID correcto (Dueño o Técnico)
+  const { data: profile } = await supabase.from('profiles').select('owner_id').eq('id', user.id).single()
+  const targetId = profile?.owner_id || user.id
+
+  // Obtenemos la fecha del formulario o usamos la actual
+  const fechaForm = formData.get('fecha_recepcion') as string
+  const fechaRecepcion = fechaForm ? new Date(fechaForm).toISOString() : new Date().toISOString()
 
   const data = {
-    usuario_id: targetId, // <--- Guardamos a nombre del Jefe
+    usuario_id: targetId,
     cliente_nombre: formData.get('cliente_nombre'),
     cliente_telefono: formData.get('cliente_telefono'),
     dispositivo: formData.get('dispositivo'),
     falla: formData.get('falla'),
     observaciones: formData.get('observaciones'),
-    cotizacion: parseFloat(formData.get('cotizacion') as string) || 0,
     categoria: formData.get('categoria'),
-    precio: parseFloat(formData.get('precio') as string) || 0,
-    comision: parseFloat(formData.get('comision') as string) || 0,
-    estado: 'Pendiente'
+    
+    // DINERO
+    cotizacion: parseFloat(formData.get('cotizacion') as string) || 0,
+    precio: parseFloat(formData.get('precio') as string) || 0,     // Precio Final estimado
+    comision: parseFloat(formData.get('comision') as string) || 0, // Mano de obra
+    adelanto: parseFloat(formData.get('adelanto') as string) || 0, // <--- NUEVO CAMPO
+    
+    // FECHAS Y ESTADO
+    estado: 'Pendiente',
+    fecha_recepcion: fechaRecepcion,          // <--- NUEVO CAMPO
+    ultimo_cambio_estado: new Date().toISOString() // <--- NUEVO CAMPO (Inicia hoy)
   }
 
   await supabase.from('reparaciones').insert(data)
   revalidatePath('/dashboard/reparaciones')
 }
 
-// 3. Actualizar Estado
-export async function actualizarEstado(id: string, nuevoEstado: string, notaExtra: string) {
+export async function actualizarEstado(id: string, nuevoEstado: string, notaExtra: string, fechaDispositivo: string) {
   const supabase = await createClient()
   
+  // Obtenemos info actual para no perder las notas viejas
   const { data: actual } = await supabase.from('reparaciones').select('observaciones').eq('id', id).single()
-  
   let obsFinal = actual?.observaciones || ''
+  
   if (notaExtra) {
-    const fecha = new Date().toLocaleDateString()
-    obsFinal += `\n[${fecha} - ${nuevoEstado}]: ${notaExtra}`
+    // Usamos la fecha del dispositivo para que coincida en el historial de texto
+    // 'es-GT' asegura formato día/mes/año
+    const fechaTexto = new Date(fechaDispositivo).toLocaleDateString('es-GT')
+    obsFinal += `\n[${fechaTexto} - ${nuevoEstado}]: ${notaExtra}`
   }
 
-  await supabase.from('reparaciones').update({
-    estado: nuevoEstado,
-    observaciones: obsFinal
+  // Actualizamos estado y la FECHA DE CAMBIO usando la hora que envió el dispositivo
+  await supabase.from('reparaciones').update({ 
+    estado: nuevoEstado, 
+    observaciones: obsFinal,
+    ultimo_cambio_estado: fechaDispositivo  // <--- GUARDA LA HORA EXACTA DE TU CELULAR/PC
   }).eq('id', id)
-
+  
   revalidatePath('/dashboard/reparaciones')
 }
-
 // 4. Eliminar Reparación
 export async function eliminarReparacion(id: string) {
   const supabase = await createClient()
@@ -101,6 +121,7 @@ export async function editarReparacion(formData: FormData) {
         categoria: formData.get('categoria'),
         precio: parseFloat(formData.get('precio') as string) || 0,
         comision: parseFloat(formData.get('comision') as string) || 0,
+        adelanto: parseFloat(formData.get('adelanto') as string) || 0,
     }
 
     await supabase.from('reparaciones').update(updates).eq('id', id)

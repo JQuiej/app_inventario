@@ -22,12 +22,14 @@ export async function getStatsData(month: number, year: number) {
   const endDate = new Date(year, month, 1, 23, 59, 59).toISOString()
 
   // ==========================================
-  // 1. REPARACIONES
+  // 1. REPARACIONES (FILTRADO DESDE LA DB)
   // ==========================================
   const { data: repData } = await supabase
     .from('reparaciones')
     .select('precio, cotizacion, comision, categoria')
     .eq('usuario_id', user.id)
+    // --- FILTRO CLAVE: Solo traemos lo que ya generó dinero real o finalizó ---
+    .in('estado', ['Reparado', 'Entregado']) 
     .gte('created_at', startDate)
     .lt('created_at', endDate)
 
@@ -38,15 +40,14 @@ export async function getStatsData(month: number, year: number) {
   repData?.forEach((item: any) => {
     const ingreso = Number(item.precio) || 0
     
-    // CORRECCIÓN SOLICITADA:
-    // Costo Real = Cotización (Repuesto/Base) + Comisión (Mano de obra externa/Pago extra)
+    // Costo Real = Cotización (Repuesto) + Comisión (Mano de obra externa)
     const costoBase = Number(item.cotizacion) || 0
     const comision = Number(item.comision) || 0
     const costoTotal = costoBase + comision
 
     const cat = item.categoria || 'Otras Reparaciones'
 
-    // Solo sumamos si hubo un cobro real (trabajo terminado/cobrado)
+    // Aseguramos que solo sume si tiene precio mayor a 0
     if (ingreso > 0) {
       repMap.set(cat, (repMap.get(cat) || 0) + ingreso)
       
@@ -86,7 +87,7 @@ export async function getStatsData(month: number, year: number) {
     const qty = Number(item.cantidad) || 0
     const precioVenta = Number(item.precio_real_venta) || 0
     
-    // Costo: Si se guardó al vender úsalo, sino usa el promedio actual del producto
+    // Costo: Si se guardó al vender úsalo, sino usa el promedio actual
     const costoUnit = item.costo_unitario !== null 
       ? Number(item.costo_unitario) 
       : (Number(prod.costo_promedio) || 0)
