@@ -6,9 +6,15 @@ import styles from './categorias.module.css' // <--- Importamos los estilos
 
 export default async function CategoriasPage() {
   const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+  
   const { data: categorias } = await supabase
     .from('categorias')
     .select('*')
+    .eq('usuario_id', user.id) // Filtro de seguridad
+    .order('nombre')
     .order('creado_en', { ascending: false })
 
   return (
