@@ -336,7 +336,7 @@ function EditRepairModal({ reparacion, onUpdate }: { reparacion: any, onUpdate: 
                         <input name="cotizacion" type="number" step="0.01" defaultValue={reparacion.cotizacion} className={styles.input} disabled={isPending} />
                     </div>
                     <div className={styles.formGroup}>
-                        <label className={styles.label}>Comisión (Mano de obra)</label>
+                        <label className={styles.label}>Comisión </label>
                         <input name="comision" type="number" step="0.01" defaultValue={reparacion.comision} className={styles.input} placeholder="0.00" disabled={isPending} />
                     </div>
                   </div>
