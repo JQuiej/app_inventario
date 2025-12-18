@@ -1,5 +1,5 @@
 'use client'
-import { useRef, useState } from 'react'
+import { useRef, useState, useTransition } from 'react' // <--- 1. Importamos useTransition
 import { Pencil } from 'lucide-react'
 import styles from './page.module.css'
 
@@ -13,6 +13,15 @@ export default function EditProductModal({
   editarProductoAction: (formData: FormData) => Promise<void>
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
+  const [isPending, startTransition] = useTransition() // <--- 2. Inicializamos el estado
+
+  // 3. Wrapper para manejar la transición
+  const handleSubmit = (formData: FormData) => {
+    startTransition(async () => {
+      await editarProductoAction(formData)
+      dialogRef.current?.close()
+    })
+  }
 
   return (
     <>
@@ -20,6 +29,7 @@ export default function EditProductModal({
         onClick={() => dialogRef.current?.showModal()} 
         className={styles.iconBtnEdit}
         title="Editar"
+        disabled={isPending} // Bloquear si algo está pasando (raro pero seguro)
       >
         <Pencil size={18} />
       </button>
@@ -28,13 +38,17 @@ export default function EditProductModal({
         <div className={styles.modalContent}>
           <div className={styles.modalHeader}>
             <h3 className={styles.modalTitle}>Editar Producto</h3>
-            <button onClick={() => dialogRef.current?.close()} className={styles.closeButton}>×</button>
+            <button 
+              onClick={() => dialogRef.current?.close()} 
+              className={styles.closeButton}
+              disabled={isPending} // Bloquear cierre mientras guarda
+            >
+              ×
+            </button>
           </div>
           
-          <form action={async (formData) => {
-            await editarProductoAction(formData)
-            dialogRef.current?.close()
-          }} className={styles.formGrid}>
+          {/* Usamos handleSubmit en el action */}
+          <form action={handleSubmit} className={styles.formGrid}>
             
             <input type="hidden" name="producto_id" value={producto.id} />
             <input type="hidden" name="categoria_id" value={categoriaId} />
@@ -46,6 +60,7 @@ export default function EditProductModal({
                 className={styles.input} 
                 defaultValue={producto.nombre} 
                 required 
+                disabled={isPending} // Bloquear input
               />
             </div>
             
@@ -55,6 +70,7 @@ export default function EditProductModal({
                 name="sku" 
                 className={styles.input} 
                 defaultValue={producto.sku} 
+                disabled={isPending} // Bloquear input
               />
             </div>
 
@@ -67,11 +83,17 @@ export default function EditProductModal({
                 className={styles.input} 
                 defaultValue={producto.precio_venta} 
                 required 
+                disabled={isPending} // Bloquear input
               />
             </div>
 
-            <button type="submit" className={styles.submitButton}>
-              Guardar Cambios
+            <button 
+              type="submit" 
+              className={styles.submitButton}
+              disabled={isPending} // Bloquear botón
+              style={{ opacity: isPending ? 0.7 : 1, cursor: isPending ? 'not-allowed' : 'pointer' }}
+            >
+              {isPending ? 'Guardando...' : 'Guardar Cambios'}
             </button>
           </form>
         </div>

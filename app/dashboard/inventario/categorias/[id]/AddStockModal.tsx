@@ -1,6 +1,6 @@
 'use client'
-import { useRef, useState, useEffect } from 'react'
-import { Plus, PackagePlus } from 'lucide-react'
+import { useRef, useState, useEffect, useTransition } from 'react' // <--- 1. Importar hook
+import { Plus } from 'lucide-react'
 import styles from './page.module.css'
 
 export default function AddStockModal({ 
@@ -11,18 +11,19 @@ export default function AddStockModal({
   agregarStockAction: (productoId: string, cantidad: number, costo: number) => Promise<void>
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
+  const [isPending, startTransition] = useTransition() // <--- 2. Inicializar hook
   
   // --- ESTADOS ---
   const [cantidad, setCantidad] = useState('')
-  const [costoBase, setCostoBase] = useState('') // Precio de lista del proveedor
+  const [costoBase, setCostoBase] = useState('') 
   
   // Descuentos
   const [tieneDescuento, setTieneDescuento] = useState(false)
   const [porcentaje, setPorcentaje] = useState('')
   
   // Resultados calculados
-  const [costoFinal, setCostoFinal] = useState(0)     // Costo unitario real
-  const [totalInversion, setTotalInversion] = useState(0) // Total a pagar
+  const [costoFinal, setCostoFinal] = useState(0)     
+  const [totalInversion, setTotalInversion] = useState(0) 
 
   // --- CALCULADORA AUTOMÁTICA ---
   useEffect(() => {
@@ -30,32 +31,33 @@ export default function AddStockModal({
     const base = parseFloat(costoBase) || 0
     let unitarioFinal = base
 
-    // 1. Aplicar descuento si está activado
     if (tieneDescuento && porcentaje) {
       const desc = parseFloat(porcentaje) || 0
       const montoDescontado = base * (desc / 100)
       unitarioFinal = base - montoDescontado
     }
 
-    // 2. Actualizar estados
     setCostoFinal(unitarioFinal)
     setTotalInversion(qty * unitarioFinal)
 
   }, [cantidad, costoBase, tieneDescuento, porcentaje])
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!cantidad || !costoBase) return
 
-    // IMPORTANTE: Enviamos el 'costoFinal' (ya con descuento) a la base de datos
-    await agregarStockAction(producto.id, parseInt(cantidad), costoFinal)
-    
-    // Limpiar formulario
-    setCantidad('')
-    setCostoBase('')
-    setPorcentaje('')
-    setTieneDescuento(false)
-    dialogRef.current?.close()
+    // 3. Envolver la acción asíncrona en startTransition
+    startTransition(async () => {
+      // IMPORTANTE: Enviamos el 'costoFinal' (ya con descuento) a la base de datos
+      await agregarStockAction(producto.id, parseInt(cantidad), costoFinal)
+      
+      // Limpiar formulario y cerrar solo al terminar
+      setCantidad('')
+      setCostoBase('')
+      setPorcentaje('')
+      setTieneDescuento(false)
+      dialogRef.current?.close()
+    })
   }
 
   return (
@@ -74,7 +76,13 @@ export default function AddStockModal({
             <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
               <h3 className={styles.modalTitle}>Ingresar Stock</h3>
             </div>
-            <button onClick={() => dialogRef.current?.close()} className={styles.closeButton}>×</button>
+            <button 
+              onClick={() => dialogRef.current?.close()} 
+              className={styles.closeButton}
+              disabled={isPending} // Bloquear cierre
+            >
+              ×
+            </button>
           </div>
 
           {/* Resumen del Producto */}
@@ -99,6 +107,7 @@ export default function AddStockModal({
                   placeholder="0"
                   autoFocus
                   required
+                  disabled={isPending} // Bloquear input
                 />
               </div>
               
@@ -112,6 +121,7 @@ export default function AddStockModal({
                   onChange={(e) => setCostoBase(e.target.value)}
                   placeholder="Precio lista"
                   required
+                  disabled={isPending} // Bloquear input
                 />
               </div>
             </div>
@@ -124,6 +134,7 @@ export default function AddStockModal({
                 checked={tieneDescuento}
                 onChange={(e) => setTieneDescuento(e.target.checked)}
                 className={styles.checkbox}
+                disabled={isPending} // Bloquear check
               />
               <label htmlFor="checkDescuentoStock" className={styles.checkboxLabel}>
                 ¿Aplicar descuento (%)?
@@ -140,6 +151,7 @@ export default function AddStockModal({
                     value={porcentaje}
                     onChange={(e) => setPorcentaje(e.target.value)}
                     placeholder="Ej. 10"
+                    disabled={isPending}
                   />
                 </div>
                 <div className={styles.formGroup}>
@@ -157,8 +169,14 @@ export default function AddStockModal({
               <span className={styles.totalAmount}>Q{totalInversion.toFixed(2)}</span>
             </div>
 
-            <button type="submit" className={styles.submitButton}>
-              Confirmar Ingreso
+            {/* Botón con estado de carga */}
+            <button 
+              type="submit" 
+              className={styles.submitButton}
+              disabled={isPending}
+              style={{ opacity: isPending ? 0.7 : 1, cursor: isPending ? 'not-allowed' : 'pointer' }}
+            >
+              {isPending ? 'Procesando...' : 'Confirmar Ingreso'}
             </button>
           </form>
         </div>

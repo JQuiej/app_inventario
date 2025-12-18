@@ -135,6 +135,72 @@
   color: #64748b;
 }
 
+/* ... Tus estilos anteriores ... */
+
+/* --- NUEVOS ESTILOS PARA ACCIONES --- */
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  z-index: 10; /* Asegurar que estén encima */
+}
+
+.iconBtn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  padding: 0.4rem;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.iconBtn:hover {
+  background-color: #334155;
+  color: #f8fafc;
+}
+
+.deleteBtn:hover {
+  background-color: #451a1a;
+  color: #ef4444;
+}
+
+.saveBtn {
+  color: #22c55e;
+}
+.saveBtn:hover {
+  background-color: #14532d;
+  color: #4ade80;
+}
+
+.cancelBtn:hover {
+  background-color: #7f1d1d;
+  color: #f87171;
+}
+
+/* Modo Edición */
+.editWrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.editInput {
+  background-color: #0f172a;
+  border: 1px solid #3b82f6;
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 1rem;
+  font-weight: 700;
+  width: 100%;
+  outline: none;
+}
+
 /* =========================================
    RESPONSIVE (MÓVIL) 
    ========================================= */

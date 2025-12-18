@@ -29,7 +29,7 @@ export async function getStatsData(month: number, year: number) {
     .select('precio, cotizacion, comision, categoria')
     .eq('usuario_id', user.id)
     // --- FILTRO CLAVE: Solo traemos lo que ya generó dinero real o finalizó ---
-    .in('estado', ['Reparado', 'Entregado']) 
+    .in('estado_pago', ['Pagado']) 
     .gte('created_at', startDate)
     .lt('created_at', endDate)
 

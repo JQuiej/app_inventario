@@ -1,7 +1,7 @@
 'use client'
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState, useEffect, useTransition } from 'react'
 import styles from './page.module.css'
-import { ScanBarcode, X } from 'lucide-react' // Importamos íconos
+import { ScanBarcode, X } from 'lucide-react'
 import { Html5QrcodeScanner } from 'html5-qrcode'
 
 export default function CreateProductModal({ 
@@ -12,6 +12,7 @@ export default function CreateProductModal({
   crearProductoCompleto: (formData: FormData) => Promise<void>
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
+  const [isPending, startTransition] = useTransition() // <--- HOOK DE TRANSICIÓN
   
   // --- ESTADOS ---
   const [costoBase, setCostoBase] = useState<string>('')
@@ -32,9 +33,6 @@ export default function CreateProductModal({
         "reader", 
         { 
           fps: 10,
-          // CAMBIO AQUÍ: 
-          // width: 280, height: 100 hace un rectángulo ancho (tipo código de barras)
-          // aspectRatio: 1.77 trata de usar la cámara en formato 16:9 (más ancho)
           qrbox: { width: 280, height: 80 }, 
           aspectRatio: 1.777778 
         },
@@ -43,25 +41,22 @@ export default function CreateProductModal({
 
       scanner.render(
         (decodedText: string) => {
-          // ÉXITO: Cuando lee un código
-          setSku(decodedText); // Ponemos el código en el input
-          setMostrarScanner(false); // Cerramos el escáner
-          scanner.clear(); // Limpiamos la cámara
+          setSku(decodedText);
+          setMostrarScanner(false);
+          scanner.clear();
         }, 
         (errorMessage: any) => {
-          // Error de lectura (puedes ignorarlo, sucede mientras busca)
+          // Ignorar errores de escaneo en progreso
         }
       );
     }
 
-    // Limpieza al desmontar o cerrar
     return () => {
       if (scanner) {
         scanner.clear().catch((error: any) => console.error("Error limpiando scanner", error));
       }
     }
   }, [mostrarScanner]);
-
 
   // --- CALCULADORA DE DESCUENTO ---
   useEffect(() => {
@@ -79,9 +74,17 @@ export default function CreateProductModal({
     setCostoBase('')
     setPorcentaje('')
     setTieneDescuento(false)
-    setSku('') // Limpiar SKU
+    setSku('')
     setMostrarScanner(false)
     dialogRef.current?.showModal()
+  }
+
+  // --- FUNCIÓN DE ENVÍO CON TRANSITION ---
+  const handleSubmit = (formData: FormData) => {
+    startTransition(async () => {
+      await crearProductoCompleto(formData)
+      dialogRef.current?.close()
+    })
   }
 
   return (
@@ -94,7 +97,13 @@ export default function CreateProductModal({
         <div className={styles.modalContent}>
           <div className={styles.modalHeader}>
             <h3 className={styles.modalTitle}>Nuevo Producto</h3>
-            <button onClick={() => dialogRef.current?.close()} className={styles.closeButton}>×</button>
+            <button 
+              onClick={() => dialogRef.current?.close()} 
+              className={styles.closeButton}
+              disabled={isPending} // Bloquear cierre mientras guarda
+            >
+              ×
+            </button>
           </div>
           
           {/* --- AREA DEL ESCÁNER --- */}
@@ -110,16 +119,20 @@ export default function CreateProductModal({
             </div>
           )}
 
-          <form action={async (formData) => {
-            await crearProductoCompleto(formData)
-            dialogRef.current?.close()
-          }} className={styles.formGrid}>
+          {/* Usamos el nuevo handleSubmit en el action */}
+          <form action={handleSubmit} className={styles.formGrid}>
             
             <input type="hidden" name="categoria_id" value={categoriaId} />
             
             <div className={styles.formGroup}>
               <label className={styles.label}>Nombre</label>
-              <input name="nombre" className={styles.input} required placeholder="Ej. Samsung A06" />
+              <input 
+                name="nombre" 
+                className={styles.input} 
+                required 
+                placeholder="Ej. Samsung A06" 
+                disabled={isPending} 
+              />
             </div>
             
             {/* INPUT SKU CON BOTÓN DE CÁMARA */}
@@ -132,12 +145,14 @@ export default function CreateProductModal({
                   value={sku}
                   onChange={(e) => setSku(e.target.value)}
                   placeholder="Escanea o escribe..."
+                  disabled={isPending}
                 />
                 <button 
                   type="button" 
                   onClick={() => setMostrarScanner(!mostrarScanner)}
                   className={styles.scanButton}
                   title="Abrir Cámara"
+                  disabled={isPending}
                 >
                   <ScanBarcode size={20} />
                 </button>
@@ -146,7 +161,14 @@ export default function CreateProductModal({
 
             <div className={styles.formGroup}>
               <label className={styles.label}>Precio Venta (Q)</label>
-              <input name="precio_venta" type="number" step="0.01" className={styles.input} required />
+              <input 
+                name="precio_venta" 
+                type="number" 
+                step="0.01" 
+                className={styles.input} 
+                required 
+                disabled={isPending}
+              />
             </div>
 
             <div className={styles.sectionDivider}>Inventario Inicial</div>
@@ -154,7 +176,13 @@ export default function CreateProductModal({
             <div className={styles.row}>
               <div className={styles.formGroup}>
                 <label className={styles.label}>Cantidad Inicial</label>
-                <input name="stock_inicial" type="number" className={styles.input} defaultValue="0" />
+                <input 
+                  name="stock_inicial" 
+                  type="number" 
+                  className={styles.input} 
+                  defaultValue="0" 
+                  disabled={isPending}
+                />
               </div>
               
               <div className={styles.formGroup}>
@@ -166,6 +194,7 @@ export default function CreateProductModal({
                   value={costoBase}
                   onChange={(e) => setCostoBase(e.target.value)}
                   placeholder="0.00"
+                  disabled={isPending}
                 />
               </div>
             </div>
@@ -177,6 +206,7 @@ export default function CreateProductModal({
                 checked={tieneDescuento}
                 onChange={(e) => setTieneDescuento(e.target.checked)}
                 className={styles.checkbox}
+                disabled={isPending}
               />
               <label htmlFor="checkDescuentoCat" className={styles.checkboxLabel}>
                 ¿Aplicar descuento (%)?
@@ -193,6 +223,7 @@ export default function CreateProductModal({
                     value={porcentaje}
                     onChange={(e) => setPorcentaje(e.target.value)}
                     placeholder="Ej. 10"
+                    disabled={isPending}
                   />
                 </div>
                 <div className={styles.formGroup}>
@@ -206,7 +237,15 @@ export default function CreateProductModal({
 
             <input type="hidden" name="costo_unitario" value={costoFinal} />
 
-            <button type="submit" className={styles.submitButton}>Guardar Todo</button>
+            {/* BOTÓN CON ESTADO DE CARGA */}
+            <button 
+              type="submit" 
+              className={styles.submitButton}
+              disabled={isPending} // Deshabilitar click
+              style={{ opacity: isPending ? 0.7 : 1, cursor: isPending ? 'not-allowed' : 'pointer' }}
+            >
+              {isPending ? 'Guardando...' : 'Guardar Todo'}
+            </button>
           </form>
         </div>
       </dialog>

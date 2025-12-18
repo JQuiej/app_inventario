@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: 'Mastercell Inventario',
     short_name: 'Mastercell',
     description: 'Sistema de control de inventario y reparaciones',
-    start_url: '/login',
+    start_url: '/',
     display: 'standalone',
     background_color: '#0f172a',
     theme_color: '#0f172a',

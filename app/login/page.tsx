@@ -1,21 +1,31 @@
 'use client'
-import { useState, Suspense } from 'react'
+import { useState, Suspense, useTransition } from 'react' // <--- Importamos useTransition
 import { login, signup } from './actions'
 import styles from './login.module.css'
 import { useSearchParams } from 'next/navigation'
-import { Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff, Loader2 } from 'lucide-react' // <--- Importamos Loader2
 
-// 1. Spostiamo tutta la logica in un componente separato
+// 1. Lógica del formulario
 function LoginForm() {
   const [isRegistering, setIsRegistering] = useState(false)
-  const searchParams = useSearchParams() // Questo è ciò che causava l'errore
+  const searchParams = useSearchParams()
   const [showPassword, setShowPassword] = useState(false)
+  const [isPending, startTransition] = useTransition() // <--- Hook para estado de carga
   
   const message = searchParams.get('message')
   const error = searchParams.get('error')
 
   const toggleMode = () => {
     setIsRegistering(!isRegistering)
+  }
+
+  // Wrapper para manejar el envío con transición
+  const handleSubmit = (action: (formData: FormData) => Promise<void>) => {
+    return (formData: FormData) => {
+      startTransition(async () => {
+        await action(formData)
+      })
+    }
   }
 
   return (
@@ -41,7 +51,9 @@ function LoginForm() {
         </div>
       )}
 
-      <form className={styles.form}>
+      {/* Usamos action={handleSubmit(...)} en lugar de formAction en el botón */}
+      <form action={isRegistering ? handleSubmit(signup) : handleSubmit(login)} className={styles.form}>
+        
         {isRegistering && (
           <div className={styles.formGroup}>
             <label className={styles.label}>Nombre del Negocio</label>
@@ -51,6 +63,7 @@ function LoginForm() {
               placeholder="Ej. Tienda" 
               className={styles.input} 
               required={isRegistering}
+              disabled={isPending} // Bloquear input
             />
           </div>
         )}
@@ -63,6 +76,7 @@ function LoginForm() {
             placeholder="nombre@ejemplo.com"
             required 
             className={styles.input} 
+            disabled={isPending} // Bloquear input
           />
         </div>
         
@@ -76,6 +90,7 @@ function LoginForm() {
               required 
               className={styles.input}
               style={{ paddingRight: '2.5rem' }} 
+              disabled={isPending} // Bloquear input
             />
             
             <button 
@@ -83,6 +98,7 @@ function LoginForm() {
               onClick={() => setShowPassword(!showPassword)}
               className={styles.passwordToggle}
               title={showPassword ? "Ocultar contraseña" : "Ver contraseña"}
+              disabled={isPending}
             >
               {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
             </button>
@@ -90,16 +106,30 @@ function LoginForm() {
         </div>
         
         <button 
-          formAction={isRegistering ? signup : login} 
+          type="submit" 
           className={styles.submitButton}
+          disabled={isPending} // Deshabilitar botón mientras carga
+          style={{ opacity: isPending ? 0.7 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
         >
-          {isRegistering ? 'Registrarse' : 'Iniciar Sesión'}
+          {isPending ? (
+            <>
+              <Loader2 className="animate-spin" size={20} />
+              {isRegistering ? 'Registrando...' : 'Iniciando...'}
+            </>
+          ) : (
+            isRegistering ? 'Registrarse' : 'Iniciar Sesión'
+          )}
         </button>
       </form>
 
       <div className={styles.toggleText}>
         {isRegistering ? '¿Ya tienes una cuenta?' : '¿No tienes cuenta?'}
-        <button onClick={toggleMode} className={styles.toggleLink} type="button">
+        <button 
+            onClick={toggleMode} 
+            className={styles.toggleLink} 
+            type="button"
+            disabled={isPending}
+        >
           {isRegistering ? 'Inicia Sesión' : 'Regístrate'}
         </button>
       </div>
@@ -107,7 +137,7 @@ function LoginForm() {
   )
 }
 
-// 2. Il componente principale esportato avvolge tutto in Suspense
+// 2. Componente principal
 export default function LoginPage() {
   return (
     <div className={styles.container}>

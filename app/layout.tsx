@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import NextTopLoader from 'nextjs-toploader'; // <--- IMPORTAR
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from 'sonner';
@@ -36,8 +37,21 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body
+      
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        {/* Agrega esto al principio del body */}
+        <NextTopLoader 
+          color="#2299DD" // Color de tu marca (puedes poner el azul de tu dashboard)
+          initialPosition={0.08}
+          crawlSpeed={200}
+          height={3}
+          crawl={true}
+          showSpinner={false} // false para que solo sea la barra, true para barra + circulito
+          easing="ease"
+          speed={200}
+          shadow="0 0 10px #2299DD,0 0 5px #2299DD"
+        />
         {children}
         
         <Toaster position="top-center" richColors />

@@ -1,27 +1,19 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
-import { Plus, Pencil, Trash2, RefreshCcw, Phone, Search, Filter, Wallet, Calendar, Clock } from 'lucide-react'
+import { useState, useEffect, useRef, useTransition } from 'react'
+import { Plus, Pencil, Trash2, RefreshCcw, Phone, Search, Filter, Wallet, Calendar, Clock, Loader2, AlertCircle, CheckCircle2, DollarSign } from 'lucide-react'
 import { toast } from 'sonner'
 import { getReparaciones, crearReparacion, actualizarEstado, eliminarReparacion, editarReparacion } from './actions'
 import styles from './reparaciones.module.css'
 
 // CATEGORÍAS DEFINIDAS
 const CATEGORIAS_REPARACION = [
-  "Pantalla",
-  "Placa de carga",
-  "Batería",
-  "Liberación",
-  "FRP / Cuenta Google",
-  "Formateo / Software",
-  "Limpieza / Mantenimiento",
-  "Otra"
+  "Pantalla", "Placa de carga", "Batería", "Liberación", "FRP / Cuenta Google", "Formateo / Software", "Limpieza / Mantenimiento", "Otra"
 ]
 
 export default function ReparacionesPage() {
   const [reparaciones, setReparaciones] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   
-  // --- ESTADOS DE FILTRO ---
   const [busqueda, setBusqueda] = useState('')
   const [filtroEstado, setFiltroEstado] = useState('Pendiente')
 
@@ -34,7 +26,10 @@ export default function ReparacionesPage() {
 
   useEffect(() => { cargarDatos() }, [])
 
-  // --- LÓGICA DE FILTRADO ---
+  // Estadísticas
+  const pendientesCount = reparaciones.filter(r => r.estado === 'Pendiente').length
+  const reparadosCount = reparaciones.filter(r => r.estado === 'Reparado').length
+
   const reparacionesFiltradas = reparaciones.filter(rep => {
     const texto = busqueda.toLowerCase()
     const coincideTexto = 
@@ -46,12 +41,11 @@ export default function ReparacionesPage() {
     return coincideTexto && coincideEstado
   })
 
-  // --- CONTACTO ---
+  // Funciones auxiliares (Contacto, Tiempo, Eliminar) se mantienen igual...
   const handleContactar = (nombre: string, telefono: string) => {
     if (!telefono) return toast.error("Sin teléfono registrado")
     const numLimpio = telefono.replace(/\D/g, '') 
     const numWhatsapp = numLimpio.length === 8 ? `502${numLimpio}` : numLimpio
-
     toast.custom((t) => (
       <div className={styles.contactToast}>
         <div style={{fontWeight: 'bold', marginBottom:'0.5rem'}}>Contactar a {nombre}</div>
@@ -63,16 +57,13 @@ export default function ReparacionesPage() {
     ), { duration: 5000 })
   }
 
-  // --- CALCULO DE TIEMPO ---
   function calcularTiempo(fecha: string) {
     if (!fecha) return '-'
     const diff = new Date().getTime() - new Date(fecha).getTime();
     const dias = Math.floor(diff / (1000 * 3600 * 24));
-    
     if (dias === 0) {
         const horas = Math.floor(diff / (1000 * 3600));
-        if (horas === 0) return 'Hace un momento';
-        return `Hace ${horas}h`;
+        return horas === 0 ? 'Hace un momento' : `Hace ${horas}h`;
     }
     return `Hace ${dias} días`;
   }
@@ -80,10 +71,7 @@ export default function ReparacionesPage() {
   const handleDelete = (id: string) => {
     toast('¿Eliminar registro?', {
       action: { label: 'Eliminar', onClick: async () => { await eliminarReparacion(id); cargarDatos(); toast.success('Eliminado') } },
-      cancel: { 
-        label: 'Cancelar',
-        onClick: () => {}
-      },
+      cancel: { label: 'Cancelar', onClick: () => {} },
       actionButtonStyle: { backgroundColor: '#ef4444' }
     })
   }
@@ -91,7 +79,25 @@ export default function ReparacionesPage() {
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <h1 className={styles.title}>Reparaciones</h1>
+        <div>
+          <h1 className={styles.title}>Reparaciones</h1>
+          <div className={styles.statsContainer}>
+            <div className={styles.statItem} style={{ borderLeft: '4px solid #facc15' }}>
+              <AlertCircle size={20} color="#facc15" />
+              <div>
+                <div className={styles.statLabel}>Pendientes de Reparar</div>
+                <div className={styles.statNumber}>{pendientesCount}</div>
+              </div>
+            </div>
+            <div className={styles.statItem} style={{ borderLeft: '4px solid #4ade80' }}>
+              <CheckCircle2 size={20} color="#4ade80" />
+              <div>
+                <div className={styles.statLabel}>Listos para Entregar</div>
+                <div className={styles.statNumber}>{reparadosCount}</div>
+              </div>
+            </div>
+          </div>
+        </div>
         
         <div className={styles.controls}>
             <div className={styles.searchWrapper}>
@@ -119,9 +125,9 @@ export default function ReparacionesPage() {
               <tr>
                 <th>Cliente / Recepción</th>
                 <th>Falla / Categoría</th>
-                <th>Estado</th>
-                <th style={{textAlign:'right'}}>Costo Reparacion</th>
-                <th style={{textAlign:'right'}}>Cobro Final</th>
+                <th>Estado Reparación</th>
+                <th style={{textAlign:'right'}}>Costo</th>
+                <th style={{textAlign:'right'}}>Cobro / Pago</th> {/* Header actualizado */}
                 <th style={{textAlign:'center'}}>Acciones</th>
               </tr>
             </thead>
@@ -136,13 +142,9 @@ export default function ReparacionesPage() {
                   <td>
                     <div style={{fontWeight:'bold', color:'white'}}>{rep.cliente_nombre}</div>
                     <div style={{fontSize:'0.8rem', color:'#cbd5e1'}}>{rep.dispositivo}</div>
-                    {/* FECHA DE RECEPCIÓN */}
                     <div style={{fontSize:'0.75rem', color:'#64748b', marginTop:'4px', display:'flex', alignItems:'center', gap:'4px'}}>
                         <Calendar size={12}/> 
                         {rep.fecha_recepcion ? new Date(rep.fecha_recepcion).toLocaleDateString() : 'N/A'}
-                        <span style={{fontSize:'0.7rem'}}>
-                             {rep.fecha_recepcion ? new Date(rep.fecha_recepcion).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : ''}
-                        </span>
                     </div>
                   </td>
                   <td>
@@ -155,7 +157,6 @@ export default function ReparacionesPage() {
                     <span className={`${styles.badge} ${styles['status' + rep.estado.replace(' ', '')]}`}>
                       {rep.estado}
                     </span>
-                    {/* TIEMPO DESDE ÚLTIMO CAMBIO */}
                     <div style={{fontSize:'0.7rem', color:'#64748b', marginTop:'4px', display:'flex', alignItems:'center', gap:'4px'}}>
                         <Clock size={12}/>
                         {calcularTiempo(rep.ultimo_cambio_estado || rep.created_at)}
@@ -163,33 +164,34 @@ export default function ReparacionesPage() {
                   </td>
                   <td style={{textAlign:'right', color:'#94a3b8'}}>Q{rep.cotizacion}</td>
                   
-                  {/* COLUMNA FINANCIERA (CON ADELANTOS) */}
+                  {/* COLUMNA COBRO / ESTADO DE PAGO */}
                   <td style={{textAlign:'right'}}>
                     {rep.precio > 0 ? (
                         <div>
                             <div style={{color:'#34d399', fontWeight:'bold'}}>Q{rep.precio}</div>
                             
-                            {/* Mostrar Adelanto si existe */}
-                            {rep.adelanto > 0 && (
-                                <div style={{fontSize:'0.7rem', color:'#60a5fa'}}>
-                                    Adelanto: -Q{rep.adelanto}
-                                </div>
-                            )}
-
-                            {/* Restante a Pagar */}
-                            <div style={{fontSize:'0.75rem', color:'#e2e8f0', borderTop:'1px solid #334155', marginTop:'2px', paddingTop:'2px'}}>
-                                Resta: <b>Q{(rep.precio - (rep.adelanto || 0)).toFixed(2)}</b>
+                            {/* INDICADOR DE ESTADO DE PAGO */}
+                            <div style={{marginTop:'4px'}}>
+                              {rep.estado_pago === 'Pagado' ? (
+                                <span style={{fontSize:'0.7rem', background:'#064e3b', color:'#34d399', padding:'2px 6px', borderRadius:'99px', border:'1px solid #059669'}}>
+                                  PAGADO
+                                </span>
+                              ) : (
+                                <span style={{fontSize:'0.7rem', background:'#ad4343ff', color:'#f87171', padding:'2px 6px', borderRadius:'99px', border:'1px solid #e04444ff'}}>
+                                  PENDIENTE
+                                </span>
+                              )}
                             </div>
+
+                            {/* Detalle de deuda si no está pagado */}
+                            {rep.estado_pago !== 'Pagado' && (
+                              <div style={{fontSize:'0.75rem', color:'#e2e8f0', marginTop:'2px'}}>
+                                  Resta: <b>Q{(rep.precio - (rep.adelanto || 0)).toFixed(2)}</b>
+                              </div>
+                            )}
                         </div>
                     ) : (
-                        <div>
-                            <span style={{color:'#64748b'}}>-</span>
-                            {rep.adelanto > 0 && (
-                                <div style={{fontSize:'0.7rem', color:'#60a5fa'}}>
-                                    Abono: Q{rep.adelanto}
-                                </div>
-                            )}
-                        </div>
+                         <span style={{color:'#64748b'}}>-</span>
                     )}
                   </td>
                   
@@ -215,14 +217,172 @@ export default function ReparacionesPage() {
   )
 }
 
-// --- MODAL: NUEVO INGRESO ---
+// --- MODAL: EDITAR INFORMACIÓN Y PAGO ---
+function EditRepairModal({ reparacion, onUpdate }: { reparacion: any, onUpdate: () => void }) {
+    const dialogRef = useRef<HTMLDialogElement>(null)
+    const [isPending, startTransition] = useTransition()
+  
+    // Estado local
+    const [pagoStatus, setPagoStatus] = useState(reparacion.estado_pago || 'Pendiente')
+
+    // 1. EFECTO DE SEGURIDAD: Si la reparación cambia "desde fuera" (ej. recarga), actualizamos.
+    useEffect(() => {
+        setPagoStatus(reparacion.estado_pago || 'Pendiente')
+    }, [reparacion.estado_pago])
+
+    const fechaRecepcionStr = reparacion.fecha_recepcion 
+        ? new Date(new Date(reparacion.fecha_recepcion).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)
+        : '';
+
+    const handleSubmit = (formData: FormData) => {
+        startTransition(async () => {
+            await editarReparacion(formData)
+            onUpdate()
+            dialogRef.current?.close()
+            toast.success("Información actualizada")
+        })
+    }
+
+    // 2. FUNCIÓN DE APERTURA: Resetea el estado SIEMPRE al abrir
+    const openModal = () => {
+        setPagoStatus(reparacion.estado_pago || 'Pendiente') // <--- CLAVE PARA CORREGIR EL ERROR
+        dialogRef.current?.showModal()
+    }
+
+    return (
+      <>
+        {/* Usamos openModal en lugar de abrir el dialog directamente */}
+        <button onClick={openModal} className={`${styles.iconBtn} ${styles.btnEdit}`} title="Editar / Cobrar">
+          <Pencil size={16} />
+        </button>
+
+        <dialog ref={dialogRef} className={styles.dialog}>
+          <div className={styles.modalContent}>
+            <div className={styles.modalHeader}>
+              <h3>Editar / Confirmar Pago</h3>
+              <button onClick={() => dialogRef.current?.close()} className={styles.closeButton} disabled={isPending}>×</button>
+            </div>
+            <form action={handleSubmit} className={styles.formGrid}>
+              <input type="hidden" name="id" value={reparacion.id} />
+              
+              {/* DATOS GENERALES */}
+              <div style={{display:'grid', gridTemplateColumns:'2fr 1fr', gap:'1rem'}}>
+                  <div className={styles.formGroup}>
+                    <label className={styles.label}>Dispositivo</label>
+                    <input name="dispositivo" defaultValue={reparacion.dispositivo} className={styles.input} required disabled={isPending} />
+                  </div>
+                  <div className={styles.formGroup}>
+                     <label className={styles.label}>Recepción</label>
+                     <input name="fecha_recepcion" type="datetime-local" defaultValue={fechaRecepcionStr} className={styles.input} disabled={isPending} />
+                  </div>
+              </div>
+              <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem'}}>
+                  <div className={styles.formGroup}>
+                      <label className={styles.label}>Cliente</label>
+                      <input name="cliente_nombre" defaultValue={reparacion.cliente_nombre} className={styles.input} disabled={isPending} />
+                  </div>
+                  <div className={styles.formGroup}>
+                      <label className={styles.label}>Teléfono</label>
+                      <input name="cliente_telefono" defaultValue={reparacion.cliente_telefono} className={styles.input} disabled={isPending} />
+                  </div>
+              </div>
+              <div className={styles.formGroup}>
+                  <label className={styles.label}>Categoría</label>
+                  <select name="categoria" defaultValue={reparacion.categoria} className={styles.select} disabled={isPending}>
+                      {CATEGORIAS_REPARACION.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                  </select>
+              </div>
+
+              {/* SECCIÓN FINANCIERA */}
+              <div style={{background:'rgba(59, 130, 246, 0.1)', padding:'1rem', borderRadius:'8px', marginTop:'0.5rem'}}>
+                  <div style={{fontWeight:'bold', color:'#60a5fa', marginBottom:'0.5rem', display:'flex', alignItems:'center', gap:'5px'}}>
+                      <Wallet size={16}/> Finanzas y Pagos
+                  </div>
+                  
+                  {/* SELECTOR DE PAGO SINCRONIZADO */}
+                  <div className={styles.formGroup} style={{marginBottom:'1rem'}}>
+                      <label className={styles.label} style={{color: pagoStatus === 'Pagado' ? '#34d399' : '#f87171'}}>Estado del Pago</label>
+                      <select 
+                        name="estado_pago" 
+                        value={pagoStatus}
+                        onChange={(e) => setPagoStatus(e.target.value)}
+                        className={styles.select}
+                        style={{
+                            borderColor: pagoStatus === 'Pagado' ? '#059669' : '#b91c1c', 
+                            color: pagoStatus === 'Pagado' ? '#34d399' : '#f87171',
+                            fontWeight: 'bold'
+                        }}
+                        disabled={isPending}
+                      >
+                          <option value="Pendiente">⚠ PENDIENTE DE PAGO</option>
+                          <option value="Pagado">✓ PAGADO COMPLETO</option>
+                      </select>
+                  </div>
+
+                  <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem'}}>
+                    <div className={styles.formGroup}>
+                        <label className={styles.label}>Precio Final (Q)</label>
+                        <input name="precio" type="number" step="0.01" defaultValue={reparacion.precio} className={styles.input} placeholder="0.00" disabled={isPending} />
+                    </div>
+                    <div className={styles.formGroup}>
+                        <label className={styles.label}>Adelanto (Q)</label>
+                        <input name="adelanto" type="number" step="0.01" defaultValue={reparacion.adelanto} className={styles.input} placeholder="0.00" disabled={isPending} />
+                    </div>
+                  </div>
+                  
+                  <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem', marginTop:'0.5rem', opacity: 0.8}}>
+                    <div className={styles.formGroup}>
+                        <label className={styles.label}>Costo (Repuestos)</label>
+                        <input name="cotizacion" type="number" step="0.01" defaultValue={reparacion.cotizacion} className={styles.input} disabled={isPending} />
+                    </div>
+                    <div className={styles.formGroup}>
+                        <label className={styles.label}>Comisión (Mano de obra)</label>
+                        <input name="comision" type="number" step="0.01" defaultValue={reparacion.comision} className={styles.input} placeholder="0.00" disabled={isPending} />
+                    </div>
+                  </div>
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Falla / Detalles</label>
+                <textarea name="falla" defaultValue={reparacion.falla} className={styles.textarea} required disabled={isPending} />
+              </div>
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Observaciones</label>
+                <textarea name="observaciones" defaultValue={reparacion.observaciones} className={styles.textarea} rows={3} disabled={isPending} />
+              </div>
+
+              <button 
+                type="submit" 
+                className={styles.submitButton}
+                disabled={isPending}
+                style={{ opacity: isPending ? 0.7 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+              >
+                 {isPending ? <><Loader2 className="animate-spin" size={18}/> Guardando...</> : 'Confirmar Cambios'}
+              </button>
+            </form>
+          </div>
+        </dialog>
+      </>
+    )
+}
+
+// NewRepairModal y StatusModal se quedan igual (no es necesario repetirlos a menos que los hayas borrado).
+// Solo recuerda que StatusModal y NewRepairModal deben estar en el archivo.
 function NewRepairModal({ onSave }: { onSave: () => void }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
-
-  // Fecha actual por defecto para el input datetime-local
+  const [isPending, startTransition] = useTransition()
   const defaultDate = new Date();
   defaultDate.setMinutes(defaultDate.getMinutes() - defaultDate.getTimezoneOffset());
   const defaultDateString = defaultDate.toISOString().slice(0, 16);
+
+  const handleSubmit = (formData: FormData) => {
+    startTransition(async () => {
+        await crearReparacion(formData)
+        onSave()
+        dialogRef.current?.close()
+        toast.success("Ingreso registrado")
+    })
+  }
 
   return (
     <>
@@ -233,78 +393,63 @@ function NewRepairModal({ onSave }: { onSave: () => void }) {
         <div className={styles.modalContent}>
           <div className={styles.modalHeader}>
             <h3>Nuevo Ingreso</h3>
-            <button onClick={() => dialogRef.current?.close()} className={styles.closeButton}>×</button>
+            <button onClick={() => dialogRef.current?.close()} className={styles.closeButton} disabled={isPending}>×</button>
           </div>
-          <form action={async (fd) => {
-            await crearReparacion(fd)
-            onSave()
-            dialogRef.current?.close()
-            toast.success("Ingreso registrado")
-          }} className={styles.formGrid}>
-            
+          <form action={handleSubmit} className={styles.formGrid}>
             <div className={styles.formGroup}>
               <label className={styles.label}>Cliente</label>
-              <input name="cliente_nombre" className={styles.input} required placeholder="Nombre completo" />
+              <input name="cliente_nombre" className={styles.input} required placeholder="Nombre completo" disabled={isPending} />
             </div>
-            
             <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem'}}>
                 <div className={styles.formGroup}>
                     <label className={styles.label}>Teléfono</label>
-                    <input name="cliente_telefono" className={styles.input} placeholder="5555-5555" />
+                    <input name="cliente_telefono" className={styles.input} placeholder="5555-5555" disabled={isPending} />
                 </div>
                 <div className={styles.formGroup}>
                     <label className={styles.label}>Fecha Recepción</label>
-                    <input 
-                        name="fecha_recepcion" 
-                        type="datetime-local" 
-                        defaultValue={defaultDateString}
-                        className={styles.input} 
-                    />
+                    <input name="fecha_recepcion" type="datetime-local" defaultValue={defaultDateString} className={styles.input} disabled={isPending} />
                 </div>
             </div>
-
             <div className={styles.formGroup}>
               <label className={styles.label}>Dispositivo</label>
-              <input name="dispositivo" className={styles.input} required placeholder="Marca y Modelo" />
+              <input name="dispositivo" className={styles.input} required placeholder="Marca y Modelo" disabled={isPending} />
             </div>
-
             <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem'}}>
                  <div className={styles.formGroup}>
                     <label className={styles.label}>Categoría</label>
-                    <select name="categoria" className={styles.select}>
+                    <select name="categoria" className={styles.select} disabled={isPending}>
                         {CATEGORIAS_REPARACION.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                     </select>
                 </div>
                 <div className={styles.formGroup}>
                     <label className={styles.label}>Falla Reportada</label>
-                    <input name="falla" className={styles.input} required placeholder="Pantalla rota..." />
+                    <input name="falla" className={styles.input} required placeholder="Pantalla rota..." disabled={isPending} />
                 </div>
             </div>
-
             <div style={{background:'rgba(59, 130, 246, 0.05)', padding:'1rem', borderRadius:'8px', marginTop:'0.5rem', border:'1px solid #334155'}}>
                 <div style={{fontWeight:'bold', color:'#94a3b8', marginBottom:'0.5rem', fontSize:'0.85rem'}}>ESTIMACIÓN DE COSTOS</div>
                 <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'1rem'}}>
                     <div className={styles.formGroup}>
                         <label className={styles.label}>Costo Reparacion</label>
-                        <input name="cotizacion" type="number" step="0.01" className={styles.input} placeholder="0.00" />
+                        <input name="cotizacion" type="number" step="0.01" className={styles.input} placeholder="0.00" disabled={isPending} />
                     </div>
                     <div className={styles.formGroup}>
                         <label className={styles.label}>Precio Cliente</label>
-                        <input name="precio" type="number" step="0.01" className={styles.input} placeholder="0.00" />
+                        <input name="precio" type="number" step="0.01" className={styles.input} placeholder="0.00" disabled={isPending} />
                     </div>
                     <div className={styles.formGroup}>
                         <label className={styles.label} style={{color:'#60a5fa'}}>Adelanto</label>
-                        <input name="adelanto" type="number" step="0.01" className={styles.input} placeholder="0.00" />
+                        <input name="adelanto" type="number" step="0.01" className={styles.input} placeholder="0.00" disabled={isPending} />
                     </div>
                 </div>
             </div>
-
             <div className={styles.formGroup}>
                 <label className={styles.label}>Observaciones</label>
-                <textarea name="observaciones" className={styles.textarea} rows={2} />
+                <textarea name="observaciones" className={styles.textarea} rows={2} disabled={isPending} />
             </div>
-
-            <button type="submit" className={styles.submitButton}>Registrar</button>
+            <button type="submit" className={styles.submitButton} disabled={isPending} style={{ opacity: isPending ? 0.7 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                {isPending ? <><Loader2 className="animate-spin" size={18}/> Registrando...</> : 'Registrar'}
+            </button>
           </form>
         </div>
       </dialog>
@@ -312,126 +457,22 @@ function NewRepairModal({ onSave }: { onSave: () => void }) {
   )
 }
 
-// --- MODAL: EDITAR INFORMACIÓN (FINANZAS) ---
-function EditRepairModal({ reparacion, onUpdate }: { reparacion: any, onUpdate: () => void }) {
-    const dialogRef = useRef<HTMLDialogElement>(null)
-  
-    // Formatear fecha para el input datetime-local
-    const fechaRecepcionStr = reparacion.fecha_recepcion 
-        ? new Date(new Date(reparacion.fecha_recepcion).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)
-        : '';
-
-    return (
-      <>
-        <button onClick={() => dialogRef.current?.showModal()} className={`${styles.iconBtn} ${styles.btnEdit}`} title="Editar / Cobrar">
-          <Pencil size={16} />
-        </button>
-        <dialog ref={dialogRef} className={styles.dialog}>
-          <div className={styles.modalContent}>
-            <div className={styles.modalHeader}>
-              <h3>Editar / Finalizar Cobro</h3>
-              <button onClick={() => dialogRef.current?.close()} className={styles.closeButton}>×</button>
-            </div>
-            <form action={async (fd) => {
-              await editarReparacion(fd)
-              onUpdate()
-              dialogRef.current?.close()
-              toast.success("Información actualizada")
-            }} className={styles.formGrid}>
-              <input type="hidden" name="id" value={reparacion.id} />
-              
-              {/* DATOS GENERALES */}
-              <div style={{display:'grid', gridTemplateColumns:'2fr 1fr', gap:'1rem'}}>
-                  <div className={styles.formGroup}>
-                    <label className={styles.label}>Dispositivo</label>
-                    <input name="dispositivo" defaultValue={reparacion.dispositivo} className={styles.input} required />
-                  </div>
-                  <div className={styles.formGroup}>
-                     <label className={styles.label}>Recepción</label>
-                     <input name="fecha_recepcion" type="datetime-local" defaultValue={fechaRecepcionStr} className={styles.input} />
-                  </div>
-              </div>
-
-              <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem'}}>
-                  <div className={styles.formGroup}>
-                      <label className={styles.label}>Cliente</label>
-                      <input name="cliente_nombre" defaultValue={reparacion.cliente_nombre} className={styles.input} />
-                  </div>
-                  <div className={styles.formGroup}>
-                      <label className={styles.label}>Teléfono</label>
-                      <input name="cliente_telefono" defaultValue={reparacion.cliente_telefono} className={styles.input} />
-                  </div>
-              </div>
-
-              <div className={styles.formGroup}>
-                  <label className={styles.label}>Categoría</label>
-                  <select name="categoria" defaultValue={reparacion.categoria} className={styles.select}>
-                      {CATEGORIAS_REPARACION.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                  </select>
-              </div>
-
-              {/* SECCIÓN FINANCIERA */}
-              <div style={{background:'rgba(59, 130, 246, 0.1)', padding:'1rem', borderRadius:'8px', marginTop:'0.5rem'}}>
-                  <div style={{fontWeight:'bold', color:'#60a5fa', marginBottom:'0.5rem', display:'flex', alignItems:'center', gap:'5px'}}>
-                      <Wallet size={16}/> Finanzas
-                  </div>
-                  <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem'}}>
-                    <div className={styles.formGroup}>
-                        <label className={styles.label}>Precio Final (Q)</label>
-                        <input name="precio" type="number" step="0.01" defaultValue={reparacion.precio} className={styles.input} placeholder="Cobro al cliente" />
-                    </div>
-                    <div className={styles.formGroup}>
-                        <label className={styles.label}>Adelanto (Q)</label>
-                        <input name="adelanto" type="number" step="0.01" defaultValue={reparacion.adelanto} className={styles.input} placeholder="Anticipo" />
-                    </div>
-                  </div>
-                  <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem', marginTop:'0.5rem'}}>
-                    <div className={styles.formGroup}>
-                        <label className={styles.label}>Costo Reparacion</label>
-                        <input name="cotizacion" type="number" step="0.01" defaultValue={reparacion.cotizacion} className={styles.input} />
-                    </div>
-                    <div className={styles.formGroup}>
-                        <label className={styles.label}>Comisión (Q)</label>
-                        <input name="comision" type="number" step="0.01" defaultValue={reparacion.comision} className={styles.input} placeholder="Mano de obra" />
-                    </div>
-                  </div>
-              </div>
-
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Falla / Detalles</label>
-                <textarea name="falla" defaultValue={reparacion.falla} className={styles.textarea} required />
-              </div>
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Historial Observaciones</label>
-                <textarea name="observaciones" defaultValue={reparacion.observaciones} className={styles.textarea} rows={3} />
-              </div>
-
-              <button type="submit" className={styles.submitButton}>Guardar Cambios</button>
-            </form>
-          </div>
-        </dialog>
-      </>
-    )
-  }
-
-// --- MODAL: CAMBIAR ESTADO ---
-function StatusModal({ reparacion, onUpdate }: { reparacion: any, onUpdate: () => void }) {  const dialogRef = useRef<HTMLDialogElement>(null)
+function StatusModal({ reparacion, onUpdate }: { reparacion: any, onUpdate: () => void }) { 
+  const dialogRef = useRef<HTMLDialogElement>(null)
   const [estado, setEstado] = useState(reparacion.estado)
   const [nota, setNota] = useState('')
+  const [isPending, startTransition] = useTransition()
 
-  const handleUpdate = async () => {
-    // 1. Capturamos la hora exacta del dispositivo en este momento
-    const fechaDispositivo = new Date().toISOString()
-
-    // 2. La enviamos a la función
-    await actualizarEstado(reparacion.id, estado, nota, fechaDispositivo)
-    
-    onUpdate()
-    setNota('')
-    dialogRef.current?.close()
-    toast.success("Estado actualizado")
+  const handleUpdate = () => {
+    startTransition(async () => {
+        const fechaDispositivo = new Date().toISOString()
+        await actualizarEstado(reparacion.id, estado, nota, fechaDispositivo)
+        onUpdate()
+        setNota('')
+        dialogRef.current?.close()
+        toast.success("Estado actualizado")
+    })
   }
-
   return (
     <>
       <button onClick={() => dialogRef.current?.showModal()} className={`${styles.iconBtn} ${styles.btnStatus}`} title="Cambiar Estado">
@@ -441,12 +482,12 @@ function StatusModal({ reparacion, onUpdate }: { reparacion: any, onUpdate: () =
         <div className={styles.modalContent}>
           <div className={styles.modalHeader}>
             <h3>Actualizar Estado</h3>
-            <button onClick={() => dialogRef.current?.close()} className={styles.closeButton}>×</button>
+            <button onClick={() => dialogRef.current?.close()} className={styles.closeButton} disabled={isPending}>×</button>
           </div>
           <div className={styles.formGrid}>
             <div className={styles.formGroup}>
                 <label className={styles.label}>Nuevo Estado</label>
-                <select className={styles.select} value={estado} onChange={(e) => setEstado(e.target.value)}>
+                <select className={styles.select} value={estado} onChange={(e) => setEstado(e.target.value)} disabled={isPending}>
                     <option value="Pendiente">🟡 Pendiente</option>
                     <option value="Reparado">🟢 Reparado</option>
                     <option value="Sin Solución">🔴 Sin Solución</option>
@@ -455,9 +496,11 @@ function StatusModal({ reparacion, onUpdate }: { reparacion: any, onUpdate: () =
             </div>
             <div className={styles.formGroup}>
                 <label className={styles.label}>Nota (Opcional)</label>
-                <textarea className={styles.textarea} placeholder="Detalles del cambio..." value={nota} onChange={(e) => setNota(e.target.value)} />
+                <textarea className={styles.textarea} placeholder="Detalles del cambio..." value={nota} onChange={(e) => setNota(e.target.value)} disabled={isPending} />
             </div>
-            <button onClick={handleUpdate} className={styles.submitButton}>Confirmar</button>
+            <button onClick={handleUpdate} className={styles.submitButton} disabled={isPending} style={{ opacity: isPending ? 0.7 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                {isPending ? <><Loader2 className="animate-spin" size={18}/> Procesando...</> : 'Confirmar'}
+            </button>
           </div>
         </div>
       </dialog>

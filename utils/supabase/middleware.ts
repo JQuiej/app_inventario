@@ -64,5 +64,18 @@ export async function updateSession(request: NextRequest) {
     }
   }
 
+  if (request.nextUrl.pathname === '/login' && user) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+      
+    if (profile?.role === 'tecnico') {
+       return NextResponse.redirect(new URL('/dashboard/reparaciones', request.url))
+    }
+    return NextResponse.redirect(new URL('/dashboard', request.url))
+  }
+
   return response
 }

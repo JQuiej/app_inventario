@@ -37,3 +37,37 @@ export async function crearCategoria(formData: FormData) {
   // Esto hace que la lista de categorías se refresque automáticamente sin recargar la página
   revalidatePath('/dashboard/inventario')
 }
+
+export async function actualizarCategoria(id: string, nuevoNombre: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autorizado' }
+
+  const { error } = await supabase
+    .from('categorias')
+    .update({ nombre: nuevoNombre })
+    .eq('id', id)
+    .eq('usuario_id', user.id) // Seguridad: solo sus categorías
+
+  if (error) return { error: error.message }
+  revalidatePath('/dashboard/inventario')
+  return { success: true }
+}
+
+export async function eliminarCategoria(id: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autorizado' }
+
+  // Nota: Si la categoría tiene productos, Supabase podría dar error si tienes Foreign Keys.
+  // Idealmente deberías borrar o mover los productos antes, pero aquí intentamos borrar la categoría.
+  const { error } = await supabase
+    .from('categorias')
+    .delete()
+    .eq('id', id)
+    .eq('usuario_id', user.id)
+
+  if (error) return { error: 'No se puede eliminar (posiblemente tiene productos)' }
+  revalidatePath('/dashboard/inventario')
+  return { success: true }
+}
