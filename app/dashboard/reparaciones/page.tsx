@@ -127,7 +127,8 @@ export default function ReparacionesPage() {
                 <th>Falla / Categoría</th>
                 <th>Estado Reparación</th>
                 <th style={{textAlign:'right'}}>Costo</th>
-                <th style={{textAlign:'right'}}>Cobro / Pago</th> {/* Header actualizado */}
+                {/* Borramos el comentario que estaba aquí */}
+                <th style={{textAlign:'right'}}>Cobro / Pago</th>
                 <th style={{textAlign:'center'}}>Acciones</th>
               </tr>
             </thead>
@@ -332,7 +333,7 @@ function EditRepairModal({ reparacion, onUpdate }: { reparacion: any, onUpdate: 
                   
                   <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem', marginTop:'0.5rem', opacity: 0.8}}>
                     <div className={styles.formGroup}>
-                        <label className={styles.label}>Costo (Repuestos)</label>
+                        <label className={styles.label}>Costo de reparacion </label>
                         <input name="cotizacion" type="number" step="0.01" defaultValue={reparacion.cotizacion} className={styles.input} disabled={isPending} />
                     </div>
                     <div className={styles.formGroup}>

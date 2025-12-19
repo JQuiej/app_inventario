@@ -75,9 +75,10 @@ export async function editarProducto(formData: FormData) {
     nombre: formData.get('nombre'),
     sku: formData.get('sku'),
     precio_venta: parseFloat(formData.get('precio_venta') as string),
+    costo_promedio: parseFloat(formData.get('costo_promedio') as string), // <--- AGREGADO
   }
 
   await supabase.from('productos').update(updates).eq('id', productoId)
   
-  revalidatePath(`/dashboard/inventario/${categoriaId}`)
+  revalidatePath(`/dashboard/inventario/categorias/${categoriaId}`)
 }

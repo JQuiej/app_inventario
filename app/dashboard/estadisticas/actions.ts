@@ -5,9 +5,9 @@ export async function getStatsData(month: number, year: number) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   
-  // Estructura inicial vacía
   const emptyStats = { 
     reparaciones: [], ventas: [], 
+    daily: { ventas: [], reparaciones: [], total: [] }, 
     financials: {
       ventas: { ingresos: 0, costos: 0, ganancia: 0 },
       reparaciones: { ingresos: 0, costos: 0, ganancia: 0 },
@@ -17,21 +17,31 @@ export async function getStatsData(month: number, year: number) {
 
   if (!user) return emptyStats
 
-  // RANGO DE FECHAS (Timezone friendly)
+  // --- FECHAS ---
   const startDate = new Date(year, month - 1, 1, 0, 0, 0).toISOString()
-  const endDate = new Date(year, month, 1, 23, 59, 59).toISOString()
+  const endDate = new Date(year, month, 0, 23, 59, 59, 999).toISOString()
+
+  // Generar mapa de días (1 al 30/31)
+  const daysInMonth = new Date(year, month, 0).getDate()
+  const baseDailyMap = new Map<number, number>()
+  for (let i = 1; i <= daysInMonth; i++) {
+    baseDailyMap.set(i, 0)
+  }
+
+  const dailyVentas = new Map(baseDailyMap)
+  const dailyReparaciones = new Map(baseDailyMap)
+  const dailyTotal = new Map(baseDailyMap)
 
   // ==========================================
-  // 1. REPARACIONES (FILTRADO DESDE LA DB)
+  // 1. REPARACIONES (POR FECHA DE PAGO/CAMBIO)
   // ==========================================
   const { data: repData } = await supabase
     .from('reparaciones')
-    .select('precio, cotizacion, comision, categoria')
+    .select('precio, cotizacion, comision, categoria, ultimo_cambio_estado') // <--- CAMBIO AQUÍ
     .eq('usuario_id', user.id)
-    // --- FILTRO CLAVE: Solo traemos lo que ya generó dinero real o finalizó ---
-    .in('estado_pago', ['Pagado']) 
-    .gte('created_at', startDate)
-    .lt('created_at', endDate)
+    .eq('estado_pago', 'Pagado') // <--- FILTRO: Solo lo efectivamente cobrado
+    .gte('ultimo_cambio_estado', startDate) // <--- FILTRO FECHA: Cuándo se cobró
+    .lte('ultimo_cambio_estado', endDate)
 
   const repMap = new Map<string, number>()
   let repIngresos = 0
@@ -39,18 +49,23 @@ export async function getStatsData(month: number, year: number) {
 
   repData?.forEach((item: any) => {
     const ingreso = Number(item.precio) || 0
-    
-    // Costo Real = Cotización (Repuesto) + Comisión (Mano de obra externa)
     const costoBase = Number(item.cotizacion) || 0
     const comision = Number(item.comision) || 0
     const costoTotal = costoBase + comision
+    const cat = item.categoria || 'Otras'
 
-    const cat = item.categoria || 'Otras Reparaciones'
-
-    // Aseguramos que solo sume si tiene precio mayor a 0
     if (ingreso > 0) {
+      // Agrupar por Categoría
       repMap.set(cat, (repMap.get(cat) || 0) + ingreso)
       
+      // Agrupar por Día (Usando ultimo_cambio_estado)
+      // Nota: Si es null (datos viejos), usamos la fecha actual por seguridad, o lo saltamos.
+      const fechaReferencia = item.ultimo_cambio_estado || new Date().toISOString()
+      const day = new Date(fechaReferencia).getDate()
+      
+      dailyReparaciones.set(day, (dailyReparaciones.get(day) || 0) + ingreso)
+      dailyTotal.set(day, (dailyTotal.get(day) || 0) + ingreso)
+
       repIngresos += ingreso
       repCostos += costoTotal
     }
@@ -62,18 +77,13 @@ export async function getStatsData(month: number, year: number) {
   const { data: ventasData } = await supabase
     .from('movimientos_inventario')
     .select(`
-      cantidad,
-      precio_real_venta,
-      costo_unitario,
-      productos (
-        costo_promedio,
-        categorias ( nombre )
-      )
+      cantidad, precio_real_venta, costo_unitario, creado_en,
+      productos ( costo_promedio, categorias ( nombre ) )
     `)
     .eq('usuario_id', user.id)
     .eq('tipo_movimiento', 'SALIDA')
     .gte('creado_en', startDate)
-    .lt('creado_en', endDate)
+    .lte('creado_en', endDate)
 
   const ventasMap = new Map<string, number>()
   let venIngresos = 0
@@ -81,58 +91,47 @@ export async function getStatsData(month: number, year: number) {
 
   ventasData?.forEach((item: any) => {
     const prod = item.productos || {}
-    const catData: any = prod.categorias
-    const catNombre = catData?.nombre || 'Ventas Generales'
-
+    const catNombre = prod.categorias?.nombre || 'Ventas'
     const qty = Number(item.cantidad) || 0
     const precioVenta = Number(item.precio_real_venta) || 0
-    
-    // Costo: Si se guardó al vender úsalo, sino usa el promedio actual
-    const costoUnit = item.costo_unitario !== null 
-      ? Number(item.costo_unitario) 
-      : (Number(prod.costo_promedio) || 0)
+    const costoUnit = item.costo_unitario ?? (Number(prod.costo_promedio) || 0)
 
     const ventaTotal = qty * precioVenta
     const costoTotal = qty * costoUnit
 
     ventasMap.set(catNombre, (ventasMap.get(catNombre) || 0) + ventaTotal)
+
+    const day = new Date(item.creado_en).getDate()
+    dailyVentas.set(day, (dailyVentas.get(day) || 0) + ventaTotal)
+    dailyTotal.set(day, (dailyTotal.get(day) || 0) + ventaTotal)
     
     venIngresos += ventaTotal
     venCostos += costoTotal
   })
 
   // ==========================================
-  // 3. RETORNO ESTRUCTURADO
+  // 3. RETORNO DE DATOS
   // ==========================================
-  
-  // Ordenar gráficas
-  const statsReparaciones = Array.from(repMap.entries())
-    .map(([name, total]) => ({ name, total }))
-    .sort((a, b) => b.total - a.total)
-
-  const statsVentas = Array.from(ventasMap.entries())
-    .map(([name, total]) => ({ name, total }))
-    .sort((a, b) => b.total - a.total)
+  const formatDaily = (map: Map<number, number>) => {
+    return Array.from(map.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(([day, total]) => ({ name: day.toString(), total }))
+  }
 
   return {
-    reparaciones: statsReparaciones,
-    ventas: statsVentas,
+    reparaciones: Array.from(repMap.entries()).map(([name, total]) => ({ name, total })),
+    ventas: Array.from(ventasMap.entries()).map(([name, total]) => ({ name, total })),
+    
+    daily: {
+      ventas: formatDaily(dailyVentas),
+      reparaciones: formatDaily(dailyReparaciones),
+      total: formatDaily(dailyTotal)
+    },
+
     financials: {
-      ventas: {
-        ingresos: venIngresos,
-        costos: venCostos,
-        ganancia: venIngresos - venCostos
-      },
-      reparaciones: {
-        ingresos: repIngresos,
-        costos: repCostos,
-        ganancia: repIngresos - repCostos
-      },
-      total: {
-        ingresos: venIngresos + repIngresos,
-        costos: venCostos + repCostos,
-        ganancia: (venIngresos + repIngresos) - (venCostos + repCostos)
-      }
+      ventas: { ingresos: venIngresos, costos: venCostos, ganancia: venIngresos - venCostos },
+      reparaciones: { ingresos: repIngresos, costos: repCostos, ganancia: repIngresos - repCostos },
+      total: { ingresos: venIngresos + repIngresos, costos: venCostos + repCostos, ganancia: (venIngresos + repIngresos) - (venCostos + repCostos) }
     }
   }
 }

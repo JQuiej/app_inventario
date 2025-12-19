@@ -124,23 +124,26 @@ export default function EstadisticasPage() {
         </div>
       </div>
 
-      {/* GRID DE GRÁFICAS */}
+{/* GRID DE GRÁFICAS */}
       <div className={styles.chartsGrid}>
-        {(activeTab === 'general' || activeTab === 'reparaciones') && (
-            <StatsChart 
-              title="Ingresos por Reparaciones" 
-              data={data?.reparaciones || []} 
-              total={data?.financials.reparaciones.ingresos || 0} 
-            />
-        )}
         
-        {(activeTab === 'general' || activeTab === 'ventas') && (
+        {/* GRÁFICA PRINCIPAL: Evolución por Día */}
+        <div style={{gridColumn: '1 / -1'}}> {/* Opcional: Que ocupe todo el ancho si usas grid */}
             <StatsChart 
-              title="Ventas por Categoría" 
-              data={data?.ventas || []} 
-              total={data?.financials.ventas.ingresos || 0} 
+              // Seleccionamos los datos diarios según la pestaña activa
+              data={data?.daily[activeTab === 'general' ? 'total' : activeTab] || []} 
+              // Título dinámico
+              // Si la gráfica es diaria, el título debería reflejarlo
+              // Pero StatsChart recibe props, puedes cambiar el título o quitarlo del componente y ponerlo aquí
             />
-        )}
+        </div>
+
+        {/* Si quieres mantener las gráficas de categorías antiguas abajo, puedes dejarlas aquí, 
+            pero como StatsChart ahora es una gráfica de PUNTOS (AreaChart), 
+            se ve mejor con datos de tiempo (daily). 
+            
+            Si quisieras ver categorías, necesitarías otro componente de gráfica de barras.
+        */}
       </div>
 
     </div>

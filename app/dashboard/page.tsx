@@ -63,37 +63,37 @@ export default async function DashboardPage() {
           <SalesChart data={chartData} />
         </div>
 
-        {/* ALERTA DE STOCK BAJO */}
-        <div className={styles.alertPanel}>
-          <div className={styles.alertHeader}>
-            <h2 className={styles.subtitle} style={{marginBottom:0}}>Stock Crítico</h2>
-            <AlertTriangle size={18} color="#f59e0b" />
-          </div>
-          
-          <div className={styles.stockList}>
-            {stockBajo.length === 0 ? (
-                <div style={{padding:'1rem', color:'#94a3b8', fontSize:'0.9rem'}}>
-                    Todo en orden. No hay stock bajo.
-                </div>
-            ) : (
-                stockBajo.map((prod: any) => (
-                <div key={prod.id} className={styles.stockItem}>
-                    <div>
-                    <div className={styles.stockName}>{prod.nombre}</div>
-                    </div>
-                    <div className={styles.stockBadge}>
-                    Queda: {prod.stock_actual}
-                    </div>
-                </div>
-                ))
-            )}
-          </div>
-          {stockBajo.length > 0 && (
-              <div className={styles.alertFooter}>
-                  ⚠️ Requieren reabastecimiento urgente
+      {/* Tarjeta de Stock Bajo */}
+      <div className={styles.lowStockCard}>
+        <div className={styles.cardHeader}>
+          <h3 className={styles.cardTitle}>
+            <AlertTriangle size={20} color="#f87171" />
+            Stock Bajo
+          </h3>
+        </div>
+
+        <div className={styles.lowStockList}>
+          {stockBajo.length === 0 ? (
+            <p style={{color: '#94a3b8', textAlign: 'center', padding: '1rem'}}>
+              Todo en orden
+            </p>
+          ) : (
+            stockBajo.map((prod) => (
+              <div key={prod.id} className={styles.stockItem}>
+                {/* Aplicamos la clase para cortar texto */}
+                <span className={styles.productName} title={prod.nombre}>
+                  {prod.nombre}
+                </span>
+                
+                {/* El badge no se encogerá gracias a flex-shrink: 0 */}
+                <span className={styles.stockBadge}>
+                  {prod.stock_actual} uni.
+                </span>
               </div>
+            ))
           )}
         </div>
+      </div>
 
       </div>
     </div>
