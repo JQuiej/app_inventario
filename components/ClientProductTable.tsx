@@ -1,25 +1,52 @@
 'use client'
 import { useState } from 'react'
-import { Search, History } from 'lucide-react'
-import { agregarStockAction } from '@/app/dashboard/inventario/categorias/[id]/actions' // Server action que llama a SQL
+import { Search, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react' // <--- ICONOS NUEVOS
+import { agregarStockAction } from '@/app/dashboard/inventario/categorias/[id]/actions'
 
 export default function ClientProductTable({ initialProducts }: { initialProducts: any[] }) {
   const [filter, setFilter] = useState('')
   
-  const productos = initialProducts.filter(p => 
+  // 1. ESTADO PARA EL ORDENAMIENTO
+  const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null)
+  
+  // Filtrado normal
+  const filteredProducts = initialProducts.filter(p => 
     p.nombre.toLowerCase().includes(filter.toLowerCase()) || 
     p.sku?.toLowerCase().includes(filter.toLowerCase())
   )
 
+  // 2. LÓGICA DE ORDENAMIENTO
+  const sortedProducts = [...filteredProducts].sort((a, b) => {
+    if (!sortConfig) return 0
+    
+    const { key, direction } = sortConfig
+    
+    if (a[key] < b[key]) {
+      return direction === 'asc' ? -1 : 1
+    }
+    if (a[key] > b[key]) {
+      return direction === 'asc' ? 1 : -1
+    }
+    return 0
+  })
+
+  // Función para activar el orden al hacer clic
+  const handleSort = (key: string) => {
+    let direction: 'asc' | 'desc' = 'asc'
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc'
+    }
+    setSortConfig({ key, direction })
+  }
+
   const handleAddStock = async (productoId: string) => {
-    // Usamos prompt nativo por simplicidad, idealmente un Modal UI
     const cantidad = prompt("¿Cantidad a ingresar?")
     if(!cantidad) return
     const costo = prompt("¿Costo UNITARIO de compra real?")
     if(!costo) return
 
     await agregarStockAction(productoId, parseInt(cantidad), parseFloat(costo))
-    window.location.reload() // Refrescar para ver nuevos promedios
+    window.location.reload() 
   }
 
   return (
@@ -38,14 +65,32 @@ export default function ClientProductTable({ initialProducts }: { initialProduct
         <thead className="bg-slate-50 text-xs uppercase font-semibold text-slate-500">
           <tr>
             <th className="p-4">Producto</th>
-            <th className="p-4 text-center">Stock</th>
+            
+            {/* 3. ENCABEZADO ORDENABLE */}
+            <th 
+              className="p-4 text-center cursor-pointer hover:bg-slate-100 transition select-none group"
+              onClick={() => handleSort('stock_actual')}
+              title="Click para ordenar"
+            >
+              <div className="flex items-center justify-center gap-1">
+                Stock
+                {/* Icono dinámico según el estado */}
+                {sortConfig?.key === 'stock_actual' ? (
+                  sortConfig.direction === 'asc' ? <ArrowUp size={14}/> : <ArrowDown size={14}/>
+                ) : (
+                  <ArrowUpDown size={14} className="opacity-0 group-hover:opacity-50 transition-opacity"/>
+                )}
+              </div>
+            </th>
+
             <th className="p-4 text-right">Costo</th>
             <th className="p-4 text-right">Precio Venta</th>
             <th className="p-4 text-center">Acciones</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
-          {productos.map(p => (
+          {/* Usamos sortedProducts en lugar de filteredProducts */}
+          {sortedProducts.map(p => (
             <tr key={p.id} className="hover:bg-slate-50 transition">
               <td className="p-4 font-medium text-slate-900">{p.nombre}</td>
               <td className="p-4 text-center">

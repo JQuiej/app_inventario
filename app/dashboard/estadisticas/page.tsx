@@ -1,9 +1,9 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useTransition } from 'react'
 import { getStatsData } from './actions'
 import StatsChart from './StatsChart'
-import { Filter, Calendar, TrendingUp, TrendingDown, DollarSign, PieChart, ShoppingCart, Wrench } from 'lucide-react'
-import styles from './estadisticas.module.css' // <--- IMPORTAMOS ESTILOS
+import { Filter, Calendar, TrendingUp, TrendingDown, PieChart, ShoppingCart, Wrench, Trophy } from 'lucide-react'
+import styles from './estadisticas.module.css'
 
 // Utilidades para fechas
 const MESES = [
@@ -14,7 +14,6 @@ const MESES = [
 ]
 
 const CURRENT_YEAR = new Date().getFullYear()
-// Generamos años dinámicos (Año actual + 1 futuro + 2 pasados)
 const YEARS = [CURRENT_YEAR + 1, CURRENT_YEAR, CURRENT_YEAR - 1, CURRENT_YEAR - 2]
 
 export default function EstadisticasPage() {
@@ -24,16 +23,38 @@ export default function EstadisticasPage() {
   
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [isPending, startTransition] = useTransition()
 
+  // Estado para el Top Productos
+  const [topCategory, setTopCategory] = useState('Todas')
+
+  // Carga de datos
   useEffect(() => {
     setLoading(true)
-    getStatsData(month, year).then(res => {
-      setData(res)
-      setLoading(false)
+    startTransition(async () => {
+        const res = await getStatsData(month, year)
+        setData(res)
+        setLoading(false)
     })
   }, [month, year])
 
-  const currentFinances = data?.financials[activeTab === 'general' ? 'total' : activeTab] || { ingresos: 0, costos: 0, ganancia: 0 }
+  // Lógica para filtrar Top Productos
+  const getFilteredTopProducts = () => {
+    if (!data?.topProducts) return []
+    let products = data.topProducts
+    if (topCategory !== 'Todas') {
+        products = products.filter((p: any) => p.category === topCategory)
+    }
+    // Devolvemos solo los 5 mejores
+    return products.slice(0, 5)
+  }
+
+  // Obtener categorías únicas para el selector
+  const availableCategories = data?.topProducts 
+    ? Array.from(new Set(data.topProducts.map((p: any) => p.category))) as string[]
+    : []
+
+  const currentFinances = data?.financials?.[activeTab === 'general' ? 'total' : activeTab] || { ingresos: 0, costos: 0, ganancia: 0 }
 
   return (
     <div className={styles.container}>
@@ -88,64 +109,134 @@ export default function EstadisticasPage() {
         </button>
       </div>
 
-      {/* TARJETAS DE RESUMEN (GRID RESPONSIVE) */}
-      <div className={styles.cardsGrid}>
-        
-        {/* INGRESOS */}
-        <div className={styles.card}>
-            <div className={styles.cardTitle}>
-                <TrendingUp size={18} color="#3b82f6"/> 
-                INGRESOS ({activeTab.toUpperCase()})
-            </div>
-            <div className={styles.cardValue}>
-                Q{currentFinances.ingresos.toLocaleString('en-US', {minimumFractionDigits:2})}
-            </div>
-        </div>
+      {loading || isPending ? (
+          <div className="flex h-64 items-center justify-center text-slate-400">Cargando datos...</div>
+      ) : (
+        <>
+            {/* TARJETAS DE RESUMEN (GRID RESPONSIVE) */}
+            <div className={styles.cardsGrid}>
+                
+                {/* INGRESOS */}
+                <div className={styles.card}>
+                    <div className={styles.cardTitle}>
+                        <TrendingUp size={18} color="#3b82f6"/> 
+                        INGRESOS ({activeTab.toUpperCase()})
+                    </div>
+                    <div className={styles.cardValue}>
+                        Q{currentFinances.ingresos.toLocaleString('en-US', {minimumFractionDigits:2})}
+                    </div>
+                </div>
 
-        {/* COSTOS */}
-        <div className={styles.card}>
-            <div className={styles.cardTitle}>
-                <TrendingDown size={18} color="#f87171"/> 
-                COSTOS ({activeTab === 'general' ? 'Total' : activeTab === 'ventas' ? 'Inventario' : 'Repuestos'})
-            </div>
-            <div className={styles.cardValue} style={{color: '#f87171'}}>
-                Q{currentFinances.costos.toLocaleString('en-US', {minimumFractionDigits:2})}
-            </div>
-        </div>
+                {/* COSTOS */}
+                <div className={styles.card}>
+                    <div className={styles.cardTitle}>
+                        <TrendingDown size={18} color="#f87171"/> 
+                        COSTOS ({activeTab === 'general' ? 'Total' : activeTab === 'ventas' ? 'Inventario' : 'Repuestos'})
+                    </div>
+                    <div className={styles.cardValue} style={{color: '#f87171'}}>
+                        Q{currentFinances.costos.toLocaleString('en-US', {minimumFractionDigits:2})}
+                    </div>
+                </div>
 
-        {/* GANANCIA BRUTA */}
-        <div className={`${styles.card} ${styles.cardProfit}`}>
-            <div className={styles.cardTitle}>
-                Q - GANANCIA BRUTA
+                {/* GANANCIA BRUTA */}
+                <div className={`${styles.card} ${styles.cardProfit}`}>
+                    <div className={styles.cardTitle}>
+                        GANANCIA BRUTA
+                    </div>
+                    <div className={styles.cardValue}>
+                        Q{currentFinances.ganancia.toLocaleString('en-US', {minimumFractionDigits:2})}
+                    </div>
+                </div>
             </div>
-            <div className={styles.cardValue}>
-                Q{currentFinances.ganancia.toLocaleString('en-US', {minimumFractionDigits:2})}
+
+            {/* GRID DE GRÁFICAS */}
+            <div className={styles.chartsGrid}>
+                
+                {/* GRÁFICA PRINCIPAL */}
+                <div style={{gridColumn: '1 / -1'}}> 
+                    <StatsChart 
+                    data={data?.daily[activeTab === 'general' ? 'total' : activeTab] || []} 
+                    />
+                </div>
+
+                {/* SECCIÓN TOP 5 PRODUCTOS (Solo visible si no estamos en 'Solo Reparaciones') */}
+                {activeTab !== 'reparaciones' && (
+                    <div style={{
+                        gridColumn: '1 / -1',
+                        backgroundColor: '#1e293b',
+                        borderRadius: '12px',
+                        border: '1px solid #334155',
+                        padding: '1.5rem',
+                        marginTop: '1rem'
+                    }}>
+                        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1rem'}}>
+                            <h3 style={{fontSize:'1.1rem', fontWeight:'700', color:'#f8fafc', display:'flex', alignItems:'center', gap:'8px'}}>
+                               Top 5 Productos Más Vendidos
+                            </h3>
+                            
+                            {/* SELECTOR DE CATEGORÍA PARA EL TOP 5 */}
+                            <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
+                                <Filter size={16} color="#94a3b8"/>
+                                <select 
+                                    value={topCategory} 
+                                    onChange={(e) => setTopCategory(e.target.value)}
+                                    style={{
+                                        backgroundColor:'#0f172a', 
+                                        color:'white', 
+                                        border:'1px solid #334155', 
+                                        padding:'4px 8px', 
+                                        borderRadius:'6px',
+                                        fontSize:'0.85rem'
+                                    }}
+                                >
+                                    <option value="Todas">Todas las categorías</option>
+                                    {availableCategories.map((cat: string) => (
+                                        <option key={cat} value={cat}>{cat}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div style={{display:'flex', flexDirection:'column', gap:'0.75rem'}}>
+                            {getFilteredTopProducts().length === 0 ? (
+                                <p style={{color:'#64748b', textAlign:'center', padding:'1rem'}}>No hay ventas en esta categoría</p>
+                            ) : (
+                                getFilteredTopProducts().map((prod: any, index: number) => (
+                                    <div key={index} style={{
+                                        display:'flex', justifyContent:'space-between', alignItems:'center',
+                                        backgroundColor: index === 0 ? 'rgba(250, 204, 21, 0.1)' : 'rgba(51, 65, 85, 0.3)',
+                                        padding:'0.75rem', borderRadius:'8px',
+                                        border: index === 0 ? '1px solid rgba(250, 204, 21, 0.3)' : '1px solid #334155'
+                                    }}>
+                                        <div style={{display:'flex', alignItems:'center', gap:'12px'}}>
+                                            <span style={{
+                                                fontWeight:'800', fontSize:'1.2rem', width:'24px', textAlign:'center',
+                                                color: index === 0 ? '#facc15' : index === 1 ? '#94a3b8' : index === 2 ? '#b45309' : '#475569'
+                                            }}>
+                                                #{index + 1}
+                                            </span>
+                                            <div>
+                                                <div style={{fontWeight:'600', color:'white'}}>{prod.name}</div>
+                                                <div style={{fontSize:'0.8rem', color:'#94a3b8'}}>{prod.category}</div>
+                                            </div>
+                                        </div>
+                                        <div style={{textAlign:'right'}}>
+                                            <div style={{fontWeight:'700', color:'#38bdf8', fontSize:'1.1rem'}}>
+                                                {prod.quantity} <span style={{fontSize:'0.8rem', fontWeight:'400', color:'#64748b'}}>unid.</span>
+                                            </div>
+                                            <div style={{fontSize:'0.75rem', color:'#34d399'}}>
+                                                Q{prod.total.toFixed(2)}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                )}
             </div>
-        </div>
-      </div>
-
-{/* GRID DE GRÁFICAS */}
-      <div className={styles.chartsGrid}>
-        
-        {/* GRÁFICA PRINCIPAL: Evolución por Día */}
-        <div style={{gridColumn: '1 / -1'}}> {/* Opcional: Que ocupe todo el ancho si usas grid */}
-            <StatsChart 
-              // Seleccionamos los datos diarios según la pestaña activa
-              data={data?.daily[activeTab === 'general' ? 'total' : activeTab] || []} 
-              // Título dinámico
-              // Si la gráfica es diaria, el título debería reflejarlo
-              // Pero StatsChart recibe props, puedes cambiar el título o quitarlo del componente y ponerlo aquí
-            />
-        </div>
-
-        {/* Si quieres mantener las gráficas de categorías antiguas abajo, puedes dejarlas aquí, 
-            pero como StatsChart ahora es una gráfica de PUNTOS (AreaChart), 
-            se ve mejor con datos de tiempo (daily). 
-            
-            Si quisieras ver categorías, necesitarías otro componente de gráfica de barras.
-        */}
-      </div>
-
+        </>
+      )}
     </div>
   )
 }

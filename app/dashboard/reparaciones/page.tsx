@@ -32,26 +32,50 @@ export default function ReparacionesPage() {
 
   const reparacionesFiltradas = reparaciones.filter(rep => {
     const texto = busqueda.toLowerCase()
+    
+    // 1. Coincidencia de texto
     const coincideTexto = 
         rep.cliente_nombre.toLowerCase().includes(texto) ||
         rep.dispositivo.toLowerCase().includes(texto) ||
         rep.cliente_telefono?.includes(texto)
     
-    const coincideEstado = filtroEstado === 'Todos' || rep.estado === filtroEstado
+    // 2. LÓGICA DE FILTRO MODIFICADA:
+    // Si hay texto en la búsqueda (busqueda !== ''), ignoramos el filtro de estado (mostramos todo lo que coincida).
+    // Si NO hay búsqueda, respetamos el filtro seleccionado.
+    const coincideEstado = busqueda !== '' 
+        ? true 
+        : (filtroEstado === 'Todos' || rep.estado === filtroEstado)
+
     return coincideTexto && coincideEstado
   })
 
-  // Funciones auxiliares (Contacto, Tiempo, Eliminar) se mantienen igual...
-  const handleContactar = (nombre: string, telefono: string) => {
-    if (!telefono) return toast.error("Sin teléfono registrado")
-    const numLimpio = telefono.replace(/\D/g, '') 
+  // --- CONTACTO CON MENSAJE PERSONALIZADO ---
+  const handleContactar = (rep: any) => {
+    if (!rep.cliente_telefono) return toast.error("Sin teléfono registrado")
+    
+    const numLimpio = rep.cliente_telefono.replace(/\D/g, '') 
     const numWhatsapp = numLimpio.length === 8 ? `502${numLimpio}` : numLimpio
+
+    // Crear mensaje personalizado
+    const mensaje = `Hola ${rep.cliente_nombre}, le escribimos de parte de MASTERCELL respecto a la reparación de su ${rep.dispositivo} (Falla: ${rep.falla}).`
+    const urlWhatsapp = `https://wa.me/${numWhatsapp}?text=${encodeURIComponent(mensaje)}`
+
     toast.custom((t) => (
       <div className={styles.contactToast}>
-        <div style={{fontWeight: 'bold', marginBottom:'0.5rem'}}>Contactar a {nombre}</div>
+        <div style={{fontWeight: 'bold', marginBottom:'0.5rem'}}>Contactar a {rep.cliente_nombre}</div>
         <div className={styles.contactActions}>
-            <button onClick={() => { window.open(`https://wa.me/${numWhatsapp}`, '_blank'); toast.dismiss(t) }} className={styles.btnWhatsapp}>WhatsApp</button>
-            <button onClick={() => { window.open(`tel:${numLimpio}`); toast.dismiss(t) }} className={styles.btnCall}>Llamar</button>
+            <button 
+                onClick={() => { window.open(urlWhatsapp, '_blank'); toast.dismiss(t) }} 
+                className={styles.btnWhatsapp}
+            >
+                WhatsApp
+            </button>
+            <button 
+                onClick={() => { window.open(`tel:${numLimpio}`); toast.dismiss(t) }} 
+                className={styles.btnCall}
+            >
+                Llamar
+            </button>
         </div>
       </div>
     ), { duration: 5000 })
@@ -127,7 +151,6 @@ export default function ReparacionesPage() {
                 <th>Falla / Categoría</th>
                 <th>Estado Reparación</th>
                 <th style={{textAlign:'right'}}>Costo</th>
-                {/* Borramos el comentario que estaba aquí */}
                 <th style={{textAlign:'right'}}>Cobro / Pago</th>
                 <th style={{textAlign:'center'}}>Acciones</th>
               </tr>
@@ -198,7 +221,8 @@ export default function ReparacionesPage() {
                   
                   <td>
                     <div className={styles.actions}>
-                      <button onClick={() => handleContactar(rep.cliente_nombre, rep.cliente_telefono)} className={`${styles.iconBtn} ${styles.btnContact}`}>
+                      {/* Pasamos el objeto completo 'rep' para tener todos los datos */}
+                      <button onClick={() => handleContactar(rep)} className={`${styles.iconBtn} ${styles.btnContact}`}>
                         <Phone size={16} />
                       </button>
                       <StatusModal reparacion={rep} onUpdate={cargarDatos} />
@@ -246,7 +270,7 @@ function EditRepairModal({ reparacion, onUpdate }: { reparacion: any, onUpdate: 
 
     // 2. FUNCIÓN DE APERTURA: Resetea el estado SIEMPRE al abrir
     const openModal = () => {
-        setPagoStatus(reparacion.estado_pago || 'Pendiente') // <--- CLAVE PARA CORREGIR EL ERROR
+        setPagoStatus(reparacion.estado_pago || 'Pendiente') 
         dialogRef.current?.showModal()
     }
 
@@ -367,8 +391,6 @@ function EditRepairModal({ reparacion, onUpdate }: { reparacion: any, onUpdate: 
     )
 }
 
-// NewRepairModal y StatusModal se quedan igual (no es necesario repetirlos a menos que los hayas borrado).
-// Solo recuerda que StatusModal y NewRepairModal deben estar en el archivo.
 function NewRepairModal({ onSave }: { onSave: () => void }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const [isPending, startTransition] = useTransition()

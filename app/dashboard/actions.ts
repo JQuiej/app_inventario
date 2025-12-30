@@ -35,7 +35,7 @@ export async function getStatsDiarios() {
   const { count: totalProductos } = await supabase
     .from('productos')
     .select('*', { count: 'exact', head: true })
-    .eq('usuario_id', user.id) // <--- FILTRO IMPORTANTE
+    .eq('usuario_id', user.id) //
 
   return {
     ventasHoy,
@@ -53,10 +53,9 @@ export async function getStockBajo() {
   const { data } = await supabase
     .from('productos')
     .select('id, nombre, stock_actual, sku')
-    .eq('usuario_id', user.id) // <--- FILTRO
-    .lt('stock_actual', 5)
+    .eq('usuario_id', user.id) // 
+    .lt('stock_actual', 4)
     .order('stock_actual', { ascending: true })
-    .limit(5)
 
   return data || []
 }

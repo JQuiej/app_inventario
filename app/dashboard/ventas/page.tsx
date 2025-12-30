@@ -136,7 +136,7 @@ export default function VentasPage() {
                     <th>Producto</th>
                     <th style={{textAlign: 'center'}}>Cant.</th>
                     <th>Total</th>
-                    <th>Hora</th>
+                    <th>Fecha y Hora </th>
                     {/* COLUMNA NUEVA */}
                     <th style={{textAlign: 'center'}}>Acciones</th> 
                 </tr>
@@ -160,7 +160,12 @@ export default function VentasPage() {
                             Q{((mov.precio_real_venta || 0) * (mov.cantidad || 1)).toFixed(2)}
                         </td>
                         <td className={styles.date}>
-                            {new Date(mov.creado_en).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                            <div style={{fontSize:'0.85rem', color:'#e2e8f0'}}>
+                                {new Date(mov.creado_en).toLocaleDateString()}
+                            </div>
+                            <div style={{fontSize:'0.75rem', color:'#94a3b8'}}>
+                                {new Date(mov.creado_en).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                            </div>
                         </td>
                         {/* BOTONES DE ACCIÓN */}
                         <td style={{textAlign: 'center'}}>

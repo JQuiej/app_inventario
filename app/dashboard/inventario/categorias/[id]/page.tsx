@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
-import { Trash2, FileSpreadsheet, Package, TrendingUp } from 'lucide-react'
+import { Trash2, FileSpreadsheet, TrendingUp, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react' // <--- ICONOS NUEVOS
 import * as XLSX from 'xlsx'
 import { toast } from 'sonner'
 import { agregarStock, getProductosPorCategoria, getCategoriaNombre } from '@/actions/inventario'
@@ -20,9 +20,10 @@ export default function ProductosPage() {
   const [nombreCategoria, setNombreCategoria] = useState('Cargando...')
   const [busqueda, setBusqueda] = useState('')
   const [loading, setLoading] = useState(true)
-  
-  // Nuevo estado para el total
   const [totalInvertido, setTotalInvertido] = useState(0)
+
+  // --- NUEVO ESTADO PARA ORDENAR ---
+  const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null)
 
   const cargarDatos = () => {
     if (!categoriaId) return
@@ -36,7 +37,6 @@ export default function ProductosPage() {
       setProductos(data)
       setNombreCategoria(catName || 'Inventario')
       
-      // CALCULAR TOTAL INVERTIDO: Suma de (Stock * Costo Promedio) de cada producto
       const total = data.reduce((acc: number, p: any) => {
         return acc + (p.stock_actual * p.costo_promedio)
       }, 0)
@@ -50,15 +50,44 @@ export default function ProductosPage() {
     if (categoriaId) cargarDatos()
   }, [categoriaId])
 
+  // --- 1. FILTRADO ---
   const productosFiltrados = productos.filter(p => 
     p.nombre.toLowerCase().includes(busqueda.toLowerCase()) || 
-    p.sku?.includes(busqueda)
+    p.sku?.toLowerCase().includes(busqueda.toLowerCase())
   )
 
-  const handleExportExcel = () => {
-    if (productosFiltrados.length === 0) return toast.error("No hay datos para exportar")
+  // --- 2. ORDENAMIENTO ---
+  const productosOrdenados = [...productosFiltrados].sort((a, b) => {
+    if (!sortConfig) return 0
+    
+    const { key, direction } = sortConfig
+    
+    if (a[key] < b[key]) {
+      return direction === 'asc' ? -1 : 1
+    }
+    if (a[key] > b[key]) {
+      return direction === 'asc' ? 1 : -1
+    }
+    return 0
+  })
 
-    const dataToExport = productosFiltrados.map(p => ({
+  // --- 3. FUNCIÓN PARA CAMBIAR ORDEN ---
+  const handleSort = (key: string) => {
+    let direction: 'asc' | 'desc' = 'desc' // Por defecto descendente (mayor stock primero)
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'desc') {
+      direction = 'asc'
+    }
+    setSortConfig({ key, direction })
+  }
+
+const handleExportExcel = () => {
+    // 1. Filtramos primero: Solo productos con stock mayor a 0
+    const productosConStock = productosOrdenados.filter(p => p.stock_actual > 0)
+
+    if (productosConStock.length === 0) return toast.error("No hay productos con stock para exportar")
+
+    // 2. Mapeamos la lista filtrada
+    const dataToExport = productosConStock.map(p => ({
       Producto: p.nombre,
       SKU: p.sku || 'N/A',
       'Stock Actual': p.stock_actual,
@@ -72,7 +101,7 @@ export default function ProductosPage() {
     XLSX.utils.book_append_sheet(workbook, worksheet, "Inventario")
 
     const fecha = new Date().toLocaleDateString().replace(/\//g, '-')
-    XLSX.writeFile(workbook, `Inventario_${nombreCategoria}_${fecha}.xlsx`)
+    XLSX.writeFile(workbook, `Inventario_${nombreCategoria}_(ConStock)_${fecha}.xlsx`)
     toast.success("Excel descargado correctamente")
   }
 
@@ -85,7 +114,7 @@ export default function ProductosPage() {
           if (categoriaId) {
             try {
               await eliminarProducto(productoId, categoriaId)
-              await cargarDatos() // Recargar para actualizar el total invertido
+              await cargarDatos() 
               toast.success('Producto eliminado')
             } catch (error) {
               toast.error('Error al eliminar')
@@ -93,10 +122,7 @@ export default function ProductosPage() {
           }
         },
       },
-      cancel: { 
-        label: 'Cancelar',
-        onClick: () => {}
-      },
+      cancel: { label: 'Cancelar', onClick: () => {} },
       actionButtonStyle: { backgroundColor: '#ef4444' }
     })
   }
@@ -132,13 +158,13 @@ export default function ProductosPage() {
             categoriaId={categoriaId} 
             crearProductoCompleto={async (formData) => {
                 await crearProductoCompleto(formData)
-                cargarDatos() // Recargar para actualizar lista y total
+                cargarDatos() 
             }} 
           />
         </div>
       </div>
 
-      {/* --- NUEVA TARJETA DE RESUMEN DE INVERSIÓN --- */}
+      {/* TARJETA TOTAL */}
       <div style={{
         backgroundColor: '#1e293b', 
         padding: '1.5rem', 
@@ -164,7 +190,6 @@ export default function ProductosPage() {
             borderRadius:'12px',
             color: '#34d399'
         }}>
-            {/* Ícono de Inversión / Crecimiento */}
             <TrendingUp size={32} strokeWidth={2.5} />
         </div>
       </div>
@@ -175,7 +200,24 @@ export default function ProductosPage() {
             <thead>
               <tr>
                 <th>Producto</th>
-                <th style={{textAlign: 'center'}}>Stock</th>
+                
+                {/* --- HEADER ORDENAR POR STOCK --- */}
+                <th 
+                  style={{textAlign: 'center', cursor: 'pointer', userSelect: 'none'}}
+                  onClick={() => handleSort('stock_actual')}
+                  title="Ordenar por Stock"
+                >
+                  <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px'}}>
+                    Stock
+                    {sortConfig?.key === 'stock_actual' ? (
+                      sortConfig.direction === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />
+                    ) : (
+                      <ArrowUpDown size={14} style={{opacity: 0.5}} />
+                    )}
+                  </div>
+                </th>
+                {/* -------------------------------- */}
+
                 <th>Costo Prom.</th>
                 <th>Precio Venta</th>
                 <th style={{textAlign: 'center'}}>Acciones</th>
@@ -184,11 +226,12 @@ export default function ProductosPage() {
             <tbody>
               {loading && <tr><td colSpan={5} style={{textAlign: 'center', padding: '2rem'}}>Cargando...</td></tr>}
               
-              {!loading && productosFiltrados.length === 0 && (
+              {!loading && productosOrdenados.length === 0 && (
                 <tr><td colSpan={5} style={{textAlign: 'center', padding: '2rem'}}>No hay productos.</td></tr>
               )}
 
-              {productosFiltrados.map((prod) => (
+              {/* Usamos productosOrdenados en lugar de productosFiltrados */}
+              {productosOrdenados.map((prod) => (
                 <tr key={prod.id}>
                   <td>
                     <div style={{fontWeight: 'bold', fontSize: '1rem'}}>{prod.nombre}</div>
@@ -207,7 +250,7 @@ export default function ProductosPage() {
                         producto={prod}
                         agregarStockAction={async (id, cant, cost) => {
                           await agregarStock(id, cant, cost)
-                          cargarDatos() // Recargar para actualizar stock y total dinero
+                          cargarDatos() 
                         }}
                       />
                       <EditProductModal 
