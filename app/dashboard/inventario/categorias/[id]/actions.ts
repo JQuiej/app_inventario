@@ -82,3 +82,44 @@ export async function editarProducto(formData: FormData) {
   
   revalidatePath(`/dashboard/inventario/categorias/${categoriaId}`)
 }
+
+export async function toggleEstadoProducto(id: string, estadoActual: boolean) {
+    const supabase = await createClient()
+    
+    const { error } = await supabase
+        .from('productos')
+        .update({ activo: !estadoActual }) // Invierte el valor actual
+        .eq('id', id)
+
+    if (error) throw new Error('Error al actualizar estado del producto')
+    
+    // Revalidamos todas las rutas posibles donde aparezca el inventario
+    revalidatePath('/dashboard/inventario')
+    revalidatePath('/dashboard/ventas') 
+}
+
+/**
+ * Obtiene los productos de una categoría específica.
+ * @param mostrarInactivos Si es true, trae todo. Si es false, solo trae los activos.
+ */
+export async function getProductosPorCategoria(categoriaId: string, mostrarInactivos: boolean = false) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return []
+
+    let query = supabase
+        .from('productos')
+        .select('*')
+        .eq('categoria_id', categoriaId)
+        .eq('usuario_id', user.id)
+        .order('nombre', { ascending: true })
+
+    // Filtro lógico: Si NO queremos ver inactivos, filtramos activo = true
+    // Si mostrarInactivos es true, no aplicamos filtro (trae true y false)
+    if (!mostrarInactivos) {
+        query = query.eq('activo', true)
+    }
+
+    const { data } = await query
+    return data || []
+}

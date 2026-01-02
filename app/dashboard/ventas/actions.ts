@@ -125,7 +125,6 @@ export async function actualizarVenta(id: string, nuevaCantidad: number, nuevoPr
   revalidatePath('/dashboard/inventario')
 }
 
-// 3. CREAR VENTA (MODIFICADO: Ahora guarda el Costo)
 type VentaData = {
   producto_id: string
   cantidad: number
@@ -137,7 +136,7 @@ export async function crearVenta(data: VentaData) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Usuario no autenticado")
 
-  // 1. OBTENEMOS EL COSTO ACTUAL DEL PRODUCTO
+  // 1. OBTENER DATOS PRODUCTO
   const { data: producto, error: prodError } = await supabase
     .from('productos')
     .select('costo_promedio, stock_actual')
@@ -146,22 +145,64 @@ export async function crearVenta(data: VentaData) {
 
   if (prodError || !producto) throw new Error("Producto no encontrado")
 
-  // 2. INSERTAMOS EL MOVIMIENTO CON EL COSTO
-  const { error } = await supabase.from('movimientos_inventario').insert({
-    usuario_id: user.id,
-    producto_id: data.producto_id,
-    tipo_movimiento: 'SALIDA',
-    cantidad: data.cantidad,
-    precio_real_venta: data.precio_venta,
-    costo_unitario: producto.costo_promedio, // <--- AQUÍ GUARDAMOS EL COSTO
-    notas: 'Venta mostrador'
-  })
+  // 2. INSERTAR LA VENTA
+  const { data: ventaInsertada, error } = await supabase
+    .from('movimientos_inventario')
+    .insert({
+      usuario_id: user.id,
+      producto_id: data.producto_id,
+      tipo_movimiento: 'SALIDA',
+      cantidad: data.cantidad,
+      precio_real_venta: data.precio_venta,
+      costo_unitario: producto.costo_promedio,
+      notas: 'Venta mostrador'
+    })
+    .select()
+    .single()
 
-  if (error) {
-    console.error("Error al crear venta:", error)
-    throw new Error("No se pudo registrar la venta")
+  if (error) throw new Error("No se pudo registrar la venta")
+
+  // =================================================================================
+  // 3. LÓGICA TAM (NUEVA POR PRODUCTO ESPECÍFICO)
+  // =================================================================================
+  const hoy = new Date().toISOString()
+  
+  // Buscamos si este producto pertenece a alguna campaña activa del usuario
+const { data: relacionPromocion } = await supabase
+    .from('promocion_productos')
+    .select(`
+      monto_descuento,
+      promocion_id,
+      promocion_id (
+        id, fecha_inicio, fecha_fin, activo, usuario_id
+      )
+    `)
+    .eq('producto_id', data.producto_id)
+    .eq('promocion_id.usuario_id', user.id)
+    .eq('promocion_id.activo', true)
+    .lte('promocion_id.fecha_inicio', hoy)
+    .gte('promocion_id.fecha_fin', hoy)
+    .maybeSingle()
+
+  if (relacionPromocion && relacionPromocion.promocion_id) {
+    const promo = relacionPromocion.promocion_id
+    
+    // USAMOS EL MONTO ESPECÍFICO DEL PRODUCTO
+    const descuentoUnitario = Number(relacionPromocion.monto_descuento) 
+    const montoTotalReembolso = descuentoUnitario * data.cantidad
+
+    if (montoTotalReembolso > 0) {
+        await supabase.from('tam').insert({
+          venta_id: ventaInsertada.id,
+          promocion_id: promo.id,
+          monto_pendiente: montoTotalReembolso,
+          estado: 'Registrado'
+        })
+    }
   }
+  // =================================================================================
 
   revalidatePath('/dashboard/ventas')
   revalidatePath('/dashboard/inventario')
+  revalidatePath('/dashboard/reembolsos')
 }

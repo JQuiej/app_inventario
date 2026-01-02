@@ -2,7 +2,7 @@
 import { useState, useEffect, useTransition } from 'react' // <--- Importamos useTransition
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, FolderTree, LogOut, Menu, X, ShoppingCart, Wrench, BarChart3, Loader2 } from 'lucide-react'
+import { LayoutDashboard, FolderTree, LogOut, Menu, X, ShoppingCart, Wrench, BarChart3, Loader2, Receipt } from 'lucide-react'
 import styles from '@/app/dashboard/layout.module.css'
 import { logout } from '@/app/login/actions'
 
@@ -97,6 +97,30 @@ export default function Sidebar({ userEmail, businessName, userRole }: SidebarPr
               </Link>
 
               <Link 
+                href="/dashboard/tam" 
+                className={styles.navLink} 
+                onClick={() => handleLinkClick('/dashboard/tam')}
+                style={pathname.includes('/dashboard/tam') ? { backgroundColor: 'rgba(255,255,255,0.1)' } : {}}
+              >
+                {loadingPath === '/dashboard/tam' ? (
+                  <Loader2 className="animate-spin" size={20} />
+                ) : (
+                  <Receipt size={20} /> 
+                )}
+                <span>Feria (TAM)</span>
+              </Link>
+
+              <Link 
+                href="/dashboard/reparaciones" 
+                className={styles.navLink} 
+                onClick={() => handleLinkClick('/dashboard/reparaciones')}
+                style={pathname.includes('/dashboard/reparaciones') ? { backgroundColor: 'rgba(255,255,255,0.1)' } : {}}
+              >
+                {loadingPath === '/dashboard/reparaciones' ? <Loader2 className="animate-spin" size={20} /> : <Wrench size={20} />}
+                <span>Reparaciones</span>
+              </Link>
+
+              <Link 
                 href="/dashboard/estadisticas" 
                 className={styles.navLink} 
                 onClick={() => handleLinkClick('/dashboard/estadisticas')}
@@ -105,18 +129,11 @@ export default function Sidebar({ userEmail, businessName, userRole }: SidebarPr
                 {loadingPath === '/dashboard/estadisticas' ? <Loader2 className="animate-spin" size={20} /> : <BarChart3 size={20} />}
                 <span>Estadísticas</span>
               </Link>
+
             </>
           )}
 
-          <Link 
-            href="/dashboard/reparaciones" 
-            className={styles.navLink} 
-            onClick={() => handleLinkClick('/dashboard/reparaciones')}
-            style={pathname.includes('/dashboard/reparaciones') ? { backgroundColor: 'rgba(255,255,255,0.1)' } : {}}
-          >
-            {loadingPath === '/dashboard/reparaciones' ? <Loader2 className="animate-spin" size={20} /> : <Wrench size={20} />}
-            <span>Reparaciones</span>
-          </Link>
+    
         </nav>
 
         <div className={styles.footer}>

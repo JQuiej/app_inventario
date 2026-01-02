@@ -53,7 +53,8 @@ export async function getStockBajo() {
   const { data } = await supabase
     .from('productos')
     .select('id, nombre, stock_actual, sku')
-    .eq('usuario_id', user.id) // 
+    .eq('usuario_id', user.id)
+    .eq('activo', true) // <--- FILTRO AGREGADO: Solo productos activos
     .lt('stock_actual', 4)
     .order('stock_actual', { ascending: true })
 

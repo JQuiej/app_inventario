@@ -1,11 +1,19 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
-import { Trash2, FileSpreadsheet, TrendingUp, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react' // <--- ICONOS NUEVOS
+// Agregamos Archive y ArchiveRestore para los iconos de estado
+import { Trash2, FileSpreadsheet, TrendingUp, ArrowUpDown, ArrowUp, ArrowDown, Archive, ArchiveRestore } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import { toast } from 'sonner'
-import { agregarStock, getProductosPorCategoria, getCategoriaNombre } from '@/actions/inventario'
-import { crearProductoCompleto, eliminarProducto, editarProducto } from './actions'
+import { agregarStock, getCategoriaNombre } from '@/actions/inventario' 
+// Importamos las acciones nuevas desde tu archivo actualizado (asumiendo que es ./actions)
+import { 
+    crearProductoCompleto, 
+    editarProducto, 
+    toggleEstadoProducto, 
+    getProductosPorCategoria // Usamos la nueva función que acepta el filtro
+} from './actions'
+
 import CreateProductModal from './CreateProductModal'
 import EditProductModal from './EditProductModal'
 import AddStockModal from './AddStockModal'
@@ -21,34 +29,41 @@ export default function ProductosPage() {
   const [busqueda, setBusqueda] = useState('')
   const [loading, setLoading] = useState(true)
   const [totalInvertido, setTotalInvertido] = useState(0)
+  
+  // --- NUEVO ESTADO: MOSTRAR DESCONTINUADOS ---
+  const [mostrarInactivos, setMostrarInactivos] = useState(false)
 
-  // --- NUEVO ESTADO PARA ORDENAR ---
   const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null)
 
   const cargarDatos = () => {
     if (!categoriaId) return
     setLoading(true)
     
+    // Pasamos 'mostrarInactivos' a la función del backend
     Promise.all([
-      getProductosPorCategoria(categoriaId),
+      getProductosPorCategoria(categoriaId, mostrarInactivos),
       getCategoriaNombre(categoriaId)
     ]).then(([prodData, catName]) => {
       const data = prodData || []
       setProductos(data)
       setNombreCategoria(catName || 'Inventario')
       
-      const total = data.reduce((acc: number, p: any) => {
-        return acc + (p.stock_actual * p.costo_promedio)
-      }, 0)
+      // Calculamos total solo de los activos para no inflar el valor real
+      const total = data
+        .filter((p: any) => p.activo) 
+        .reduce((acc: number, p: any) => {
+            return acc + (p.stock_actual * p.costo_promedio)
+        }, 0)
       setTotalInvertido(total)
 
       setLoading(false)
     })
   }
 
+  // Recargamos cuando cambia la categoría O el checkbox de inactivos
   useEffect(() => {
     if (categoriaId) cargarDatos()
-  }, [categoriaId])
+  }, [categoriaId, mostrarInactivos])
 
   // --- 1. FILTRADO ---
   const productosFiltrados = productos.filter(p => 
@@ -59,71 +74,66 @@ export default function ProductosPage() {
   // --- 2. ORDENAMIENTO ---
   const productosOrdenados = [...productosFiltrados].sort((a, b) => {
     if (!sortConfig) return 0
-    
     const { key, direction } = sortConfig
-    
-    if (a[key] < b[key]) {
-      return direction === 'asc' ? -1 : 1
-    }
-    if (a[key] > b[key]) {
-      return direction === 'asc' ? 1 : -1
-    }
+    if (a[key] < b[key]) return direction === 'asc' ? -1 : 1
+    if (a[key] > b[key]) return direction === 'asc' ? 1 : -1
     return 0
   })
 
-  // --- 3. FUNCIÓN PARA CAMBIAR ORDEN ---
   const handleSort = (key: string) => {
-    let direction: 'asc' | 'desc' = 'desc' // Por defecto descendente (mayor stock primero)
+    let direction: 'asc' | 'desc' = 'desc'
     if (sortConfig && sortConfig.key === key && sortConfig.direction === 'desc') {
       direction = 'asc'
     }
     setSortConfig({ key, direction })
   }
 
-const handleExportExcel = () => {
-    // 1. Filtramos primero: Solo productos con stock mayor a 0
-    const productosConStock = productosOrdenados.filter(p => p.stock_actual > 0)
+  const handleExportExcel = () => {
+    const productosConStock = productosOrdenados.filter(p => p.stock_actual > 0 && p.activo) // Solo activos en el reporte
+    if (productosConStock.length === 0) return toast.error("No hay productos activos con stock")
 
-    if (productosConStock.length === 0) return toast.error("No hay productos con stock para exportar")
-
-    // 2. Mapeamos la lista filtrada
     const dataToExport = productosConStock.map(p => ({
       Producto: p.nombre,
       SKU: p.sku || 'N/A',
       'Stock Actual': p.stock_actual,
       'Costo Promedio (Q)': p.costo_promedio,
       'Precio Venta (Q)': p.precio_venta,
-      'Valor Total Inventario (Q)': p.stock_actual * p.costo_promedio
+      'Valor Total (Q)': p.stock_actual * p.costo_promedio
     }))
 
     const worksheet = XLSX.utils.json_to_sheet(dataToExport)
     const workbook = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(workbook, worksheet, "Inventario")
-
     const fecha = new Date().toLocaleDateString().replace(/\//g, '-')
-    XLSX.writeFile(workbook, `Inventario_${nombreCategoria}_(ConStock)_${fecha}.xlsx`)
+    XLSX.writeFile(workbook, `Inventario_${nombreCategoria}_${fecha}.xlsx`)
     toast.success("Excel descargado correctamente")
   }
 
-  const handleDelete = (productoId: string) => {
-    toast('¿Estás seguro de eliminar este producto?', {
-      description: 'Esta acción es permanente y no se puede deshacer.',
-      action: {
-        label: 'Eliminar',
-        onClick: async () => {
-          if (categoriaId) {
-            try {
-              await eliminarProducto(productoId, categoriaId)
-              await cargarDatos() 
-              toast.success('Producto eliminado')
-            } catch (error) {
-              toast.error('Error al eliminar')
+  // --- NUEVA FUNCIÓN: CAMBIAR ESTADO (SOFT DELETE) ---
+  const handleToggleEstado = (id: string, nombre: string, estadoActual: boolean) => {
+    const accion = estadoActual ? 'desactivar' : 'restaurar';
+      
+    toast(`¿${accion === 'desactivar' ? 'Descontinuar' : 'Reactivar'} ${nombre}?`, {
+        description: estadoActual 
+          ? "El producto se ocultará de las ventas pero mantendrá su historial."
+          : "El producto volverá a estar disponible para ventas.",
+        action: {
+            label: "Confirmar",
+            onClick: async () => {
+                try {
+                    await toggleEstadoProducto(id, estadoActual)
+                    await cargarDatos()
+                    toast.success(`Producto ${estadoActual ? 'descontinuado' : 'reactivado'}`)
+                } catch (error) {
+                    toast.error("Error al actualizar estado")
+                }
             }
-          }
         },
+        cancel: { 
+        label: 'Cancelar',
+        onClick: () => {}
       },
-      cancel: { label: 'Cancelar', onClick: () => {} },
-      actionButtonStyle: { backgroundColor: '#ef4444' }
+        actionButtonStyle: { backgroundColor: estadoActual ? '#ef4444' : '#22c55e' } // Rojo para desactivar, Verde para activar
     })
   }
 
@@ -138,6 +148,17 @@ const handleExportExcel = () => {
         </div>
 
         <div className={styles.controls}>
+          {/* CHECKBOX VER DESCONTINUADOS */}
+          <label className="flex items-center gap-2 text-sm text-gray-400 cursor-pointer select-none bg-[#1e293b] px-3 py-2 rounded border border-[#334155] hover:border-gray-500 transition-colors">
+            <input 
+                type="checkbox" 
+                checked={mostrarInactivos}
+                onChange={(e) => setMostrarInactivos(e.target.checked)}
+                className="rounded border-gray-600 bg-gray-800 text-blue-500 focus:ring-0"
+            />
+            Ver descontinuados
+          </label>
+
           <input 
             type="text" 
             placeholder="Buscar producto..." 
@@ -145,11 +166,7 @@ const handleExportExcel = () => {
             onChange={(e) => setBusqueda(e.target.value)}
           />
           
-          <button 
-            onClick={handleExportExcel} 
-            className={styles.excelButton}
-            title="Exportar a Excel"
-          >
+          <button onClick={handleExportExcel} className={styles.excelButton} title="Exportar a Excel">
             <FileSpreadsheet size={20} />
             <span className={styles.btnText}>Excel</span>
           </button>
@@ -178,7 +195,7 @@ const handleExportExcel = () => {
       }}>
         <div>
             <div style={{color:'#94a3b8', fontSize:'0.9rem', fontWeight:'600', textTransform:'uppercase'}}>
-                Valor del Inventario
+                Valor del Inventario (Activos)
             </div>
             <div style={{fontSize:'2rem', fontWeight:'800', color:'#34d399', lineHeight:'1.2'}}>
                 Q{totalInvertido.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
@@ -201,7 +218,6 @@ const handleExportExcel = () => {
               <tr>
                 <th>Producto</th>
                 
-                {/* --- HEADER ORDENAR POR STOCK --- */}
                 <th 
                   style={{textAlign: 'center', cursor: 'pointer', userSelect: 'none'}}
                   onClick={() => handleSort('stock_actual')}
@@ -216,7 +232,6 @@ const handleExportExcel = () => {
                     )}
                   </div>
                 </th>
-                {/* -------------------------------- */}
 
                 <th>Costo Prom.</th>
                 <th>Precio Venta</th>
@@ -230,11 +245,13 @@ const handleExportExcel = () => {
                 <tr><td colSpan={5} style={{textAlign: 'center', padding: '2rem'}}>No hay productos.</td></tr>
               )}
 
-              {/* Usamos productosOrdenados en lugar de productosFiltrados */}
               {productosOrdenados.map((prod) => (
-                <tr key={prod.id}>
+                <tr key={prod.id} style={{ opacity: prod.activo ? 1 : 0.5 }}>
                   <td>
-                    <div style={{fontWeight: 'bold', fontSize: '1rem'}}>{prod.nombre}</div>
+                    <div style={{fontWeight: 'bold', fontSize: '1rem', display:'flex', alignItems:'center', gap:'8px'}}>
+                        {prod.nombre}
+                        {!prod.activo && <span className="text-xs bg-red-900 text-red-200 px-2 py-0.5 rounded">Inactivo</span>}
+                    </div>
                     <div className={styles.sku}>{prod.sku || '-'}</div>
                   </td>
                   <td style={{textAlign: 'center'}}>
@@ -246,28 +263,41 @@ const handleExportExcel = () => {
                   <td className={styles.price}>Q{prod.precio_venta?.toFixed(2)}</td>
                   <td>
                     <div className={styles.actionsCell}>
-                      <AddStockModal 
-                        producto={prod}
-                        agregarStockAction={async (id, cant, cost) => {
-                          await agregarStock(id, cant, cost)
-                          cargarDatos() 
-                        }}
-                      />
-                      <EditProductModal 
-                        producto={prod} 
-                        categoriaId={categoriaId} 
-                        editarProductoAction={async (fd) => {
-                          await editarProducto(fd)
-                          cargarDatos()
-                        }}
-                      />
+                      
+                      {/* Solo permitimos editar/stock si está activo */}
+                      {prod.activo && (
+                          <>
+                            <AddStockModal 
+                                producto={prod}
+                                agregarStockAction={async (id, cant, cost) => {
+                                await agregarStock(id, cant, cost)
+                                cargarDatos() 
+                                }}
+                            />
+                            <EditProductModal 
+                                producto={prod} 
+                                categoriaId={categoriaId} 
+                                editarProductoAction={async (fd) => {
+                                await editarProducto(fd)
+                                cargarDatos()
+                                }}
+                            />
+                          </>
+                      )}
+
+                      {/* BOTÓN DESACTIVAR / REACTIVAR */}
                       <button 
-                        onClick={() => handleDelete(prod.id)}
-                        className={styles.iconBtnDelete}
-                        title="Eliminar"
+                        onClick={() => handleToggleEstado(prod.id, prod.nombre, prod.activo)}
+                        className={`${styles.iconBtnDelete} transition-colors`}
+                        style={{
+                            color: prod.activo ? '#ef4444' : '#22c55e', // Rojo o Verde
+                            borderColor: prod.activo ? '#ef4444' : '#22c55e'
+                        }}
+                        title={prod.activo ? "Descontinuar" : "Reactivar"}
                       >
-                        <Trash2 size={18} />
+                        {prod.activo ? <Archive size={18} /> : <ArchiveRestore size={18} />}
                       </button>
+
                     </div>
                   </td>
                 </tr>
