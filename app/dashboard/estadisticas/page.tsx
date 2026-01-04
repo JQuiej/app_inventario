@@ -2,7 +2,7 @@
 import { useState, useEffect, useTransition } from 'react'
 import { getStatsData } from './actions'
 import StatsChart from './StatsChart'
-import { Filter, Calendar, TrendingUp, TrendingDown, PieChart, ShoppingCart, Wrench, Trophy } from 'lucide-react'
+import { Filter, Calendar, TrendingUp, TrendingDown, PieChart, ShoppingCart, Wrench, DollarSign } from 'lucide-react'
 import styles from './estadisticas.module.css'
 
 // Utilidades para fechas
@@ -25,31 +25,31 @@ export default function EstadisticasPage() {
   const [loading, setLoading] = useState(true)
   const [isPending, startTransition] = useTransition()
 
-  // Estado para el Top Productos
-  const [topCategory, setTopCategory] = useState('Todas')
+  // Estado para la Categoría (Afecta a todo ahora)
+  const [selectedCategory, setSelectedCategory] = useState('Todas')
 
-  // Carga de datos
+  // Carga de datos (Ahora incluye selectedCategory)
   useEffect(() => {
     setLoading(true)
     startTransition(async () => {
-        const res = await getStatsData(month, year)
+        // Enviamos la categoría seleccionada al servidor
+        const res = await getStatsData(month, year, selectedCategory)
         setData(res)
         setLoading(false)
     })
-  }, [month, year])
+  }, [month, year, selectedCategory]) // <-- Se recarga si cambia la categoría
 
-  // Lógica para filtrar Top Productos
-  const getFilteredTopProducts = () => {
+  // Lógica para filtrar visualmente la lista Top 5 (aunque los datos ya vienen calculados)
+  const getFilteredTopProductsList = () => {
     if (!data?.topProducts) return []
     let products = data.topProducts
-    if (topCategory !== 'Todas') {
-        products = products.filter((p: any) => p.category === topCategory)
+    if (selectedCategory !== 'Todas') {
+        products = products.filter((p: any) => p.category === selectedCategory)
     }
-    // Devolvemos solo los 5 mejores
     return products.slice(0, 5)
   }
 
-  // Obtener categorías únicas para el selector
+  // Obtener categorías únicas para el selector (Basado en el TopProducts que trae todo)
   const availableCategories = data?.topProducts 
     ? Array.from(new Set(data.topProducts.map((p: any) => p.category))) as string[]
     : []
@@ -64,6 +64,22 @@ export default function EstadisticasPage() {
         <h1 className={styles.title}>Reportes</h1>
         
         <div className={styles.filters}>
+          
+          {/* SELECTOR DE CATEGORÍA (NUEVO LUGAR) */}
+          <div className={styles.selectWrapper} style={{minWidth: '180px'}}>
+             <Filter size={18} className={styles.iconInput} />
+             <select 
+                value={selectedCategory} 
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className={styles.select}
+             >
+                <option value="Todas">Todas las categorías</option>
+                {availableCategories.map((cat: string) => (
+                    <option key={cat} value={cat}>{cat}</option>
+                ))}
+             </select>
+          </div>
+
           <div className={styles.selectWrapper}>
             <Calendar size={18} className={styles.iconInput} />
             <select 
@@ -75,7 +91,6 @@ export default function EstadisticasPage() {
             </select>
           </div>
           <div className={styles.selectWrapper}>
-            <Filter size={18} className={styles.iconInput} />
             <select 
               value={year} 
               onChange={(e) => setYear(Number(e.target.value))}
@@ -110,7 +125,9 @@ export default function EstadisticasPage() {
       </div>
 
       {loading || isPending ? (
-          <div className="flex h-64 items-center justify-center text-slate-400">Cargando datos...</div>
+          <div className="flex h-64 items-center justify-center text-slate-400">
+             Calculando finanzas...
+          </div>
       ) : (
         <>
             {/* TARJETAS DE RESUMEN (GRID RESPONSIVE) */}
@@ -120,7 +137,7 @@ export default function EstadisticasPage() {
                 <div className={styles.card}>
                     <div className={styles.cardTitle}>
                         <TrendingUp size={18} color="#3b82f6"/> 
-                        INGRESOS ({activeTab.toUpperCase()})
+                        INGRESOS ({selectedCategory === 'Todas' ? 'TOTAL' : selectedCategory.toUpperCase()})
                     </div>
                     <div className={styles.cardValue}>
                         Q{currentFinances.ingresos.toLocaleString('en-US', {minimumFractionDigits:2})}
@@ -131,7 +148,7 @@ export default function EstadisticasPage() {
                 <div className={styles.card}>
                     <div className={styles.cardTitle}>
                         <TrendingDown size={18} color="#f87171"/> 
-                        COSTOS ({activeTab === 'general' ? 'Total' : activeTab === 'ventas' ? 'Inventario' : 'Repuestos'})
+                        COSTOS
                     </div>
                     <div className={styles.cardValue} style={{color: '#f87171'}}>
                         Q{currentFinances.costos.toLocaleString('en-US', {minimumFractionDigits:2})}
@@ -159,7 +176,7 @@ export default function EstadisticasPage() {
                     />
                 </div>
 
-                {/* SECCIÓN TOP 5 PRODUCTOS (Solo visible si no estamos en 'Solo Reparaciones') */}
+                {/* SECCIÓN TOP 5 PRODUCTOS */}
                 {activeTab !== 'reparaciones' && (
                     <div style={{
                         gridColumn: '1 / -1',
@@ -171,37 +188,15 @@ export default function EstadisticasPage() {
                     }}>
                         <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1rem'}}>
                             <h3 style={{fontSize:'1.1rem', fontWeight:'700', color:'#f8fafc', display:'flex', alignItems:'center', gap:'8px'}}>
-                               Top 5 Productos Más Vendidos
+                               Top 5 Productos: {selectedCategory}
                             </h3>
-                            
-                            {/* SELECTOR DE CATEGORÍA PARA EL TOP 5 */}
-                            <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
-                                <Filter size={16} color="#94a3b8"/>
-                                <select 
-                                    value={topCategory} 
-                                    onChange={(e) => setTopCategory(e.target.value)}
-                                    style={{
-                                        backgroundColor:'#0f172a', 
-                                        color:'white', 
-                                        border:'1px solid #334155', 
-                                        padding:'4px 8px', 
-                                        borderRadius:'6px',
-                                        fontSize:'0.85rem'
-                                    }}
-                                >
-                                    <option value="Todas">Todas las categorías</option>
-                                    {availableCategories.map((cat: string) => (
-                                        <option key={cat} value={cat}>{cat}</option>
-                                    ))}
-                                </select>
-                            </div>
                         </div>
 
                         <div style={{display:'flex', flexDirection:'column', gap:'0.75rem'}}>
-                            {getFilteredTopProducts().length === 0 ? (
+                            {getFilteredTopProductsList().length === 0 ? (
                                 <p style={{color:'#64748b', textAlign:'center', padding:'1rem'}}>No hay ventas en esta categoría</p>
                             ) : (
-                                getFilteredTopProducts().map((prod: any, index: number) => (
+                                getFilteredTopProductsList().map((prod: any, index: number) => (
                                     <div key={index} style={{
                                         display:'flex', justifyContent:'space-between', alignItems:'center',
                                         backgroundColor: index === 0 ? 'rgba(250, 204, 21, 0.1)' : 'rgba(51, 65, 85, 0.3)',

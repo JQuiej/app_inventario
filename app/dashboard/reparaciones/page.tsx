@@ -178,12 +178,34 @@ export default function ReparacionesPage() {
                     <div style={{fontSize:'0.9rem', marginTop:'4px'}}>{rep.falla}</div>
                   </td>
                   <td>
-                    <span className={`${styles.badge} ${styles['status' + rep.estado.replace(' ', '')]}`}>
-                      {rep.estado}
-                    </span>
-                    <div style={{fontSize:'0.7rem', color:'#64748b', marginTop:'4px', display:'flex', alignItems:'center', gap:'4px'}}>
-                        <Clock size={12}/>
-                        {calcularTiempo(rep.ultimo_cambio_estado || rep.created_at)}
+                    <div style={{display: 'flex', flexDirection: 'column', gap: '4px'}}>
+                      {/* 1. Badge de Estado (Ya existía) */}
+                      <span className={`${styles.badge} ${styles['status' + rep.estado.replace(' ', '')]}`} style={{alignSelf: 'flex-start'}}>
+                        {rep.estado}
+                      </span>
+
+                      {/* 2. NUEVO: Observaciones debajo del estado */}
+                      {rep.observaciones && (
+                        <div style={{
+                          fontSize: '0.75rem',
+                          color: '#cbd5e1', // Color gris claro
+                          background: 'rgba(255,255,255,0.05)', // Fondo muy sutil
+                          padding: '4px 6px',
+                          borderRadius: '4px',
+                          maxWidth: '220px', // Evita que la tabla se ensanche demasiado
+                          lineHeight: '1.2',
+                          fontStyle: 'italic',
+                          whiteSpace: 'normal' // Permite que el texto baje de línea
+                        }}>
+                          "{rep.observaciones}"
+                        </div>
+                      )}
+
+                      {/* 3. Tiempo transcurrido (Ya existía) */}
+                      <div style={{fontSize:'0.7rem', color:'#64748b', marginTop:'2px', display:'flex', alignItems:'center', gap:'4px'}}>
+                          <Clock size={12}/>
+                          {calcularTiempo(rep.ultimo_cambio_estado || rep.created_at)}
+                      </div>
                     </div>
                   </td>
                   <td style={{textAlign:'right', color:'#94a3b8'}}>Q{rep.cotizacion}</td>
