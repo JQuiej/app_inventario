@@ -17,11 +17,192 @@
   margin-bottom: 2rem;
 }
 
-@media (min-width: 768px) {
+/* =========================================
+   VISTA MÓVIL: INVENTARIO ULTRA COMPACTO
+   ========================================= */
+
+@media (max-width: 768px) {
+  /* 1. Contenedor: Ajustado al ancho exacto */
+  .container {
+    padding: 8px; 
+    width: 100%;
+    max-width: 100vw; 
+    overflow-x: hidden;
+    box-sizing: border-box;
+  }
+
   .header {
-    flex-direction: row; /* PC: Fila */
-    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    width: 100%;
+  }
+
+  .title { font-size: 1.4rem; }
+
+  /* 2. Controles */
+  .controls {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .searchInput, .controls button, .controls > div {
+    width: 100% !important;
+    box-sizing: border-box;
+    margin: 0;
+    height: 38px; /* Inputs un poco más bajos también */
+  }
+
+  /* 3. Reset Tabla */
+  .tableContainer {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    width: 100%;
+    overflow: visible;
+  }
+
+  .tableWrapper {
+    width: 100%;
+    overflow-x: hidden;
+  }
+
+  .table, .table tbody, .table tr, .table td {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .table { min-width: 0 !important; }
+  .table thead { display: none; }
+
+  /* --- ESTILO DE LA TARJETA (ULTRA COMPACTA) --- */
+  .table tr {
+    background-color: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 10px;
+    margin-bottom: 0.5rem; /* Menos espacio entre tarjetas */
+    padding: 8px 10px; /* Padding interno reducido al mínimo cómodo */
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    
+    /* GRID INTERNO */
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: 
+      "info stock"
+      "cost price"
+      "actions actions";
+    gap: 2px 8px; /* Gap vertical de solo 2px */
     align-items: center;
+  }
+
+  .table td {
+    padding: 0;
+    border-bottom: none;
+  }
+
+  /* --- ÁREA 1: INFO (Nombre) --- */
+  .table td:nth-of-type(1) {
+    grid-area: info;
+    padding-right: 5px;
+  }
+  
+  .table td:nth-of-type(1) > div:first-child {
+    font-size: 0.9rem !important; /* Texto un poco más compacto */
+    font-weight: 700;
+    color: #f8fafc;
+    line-height: 1.1;
+    margin-bottom: 1px;
+    white-space: normal;
+    word-wrap: break-word; 
+  }
+  
+  .sku {
+    font-size: 0.65rem;
+    color: #64748b;
+    word-break: break-all;
+    line-height: 1;
+  }
+
+  /* --- ÁREA 2: STOCK --- */
+  .table td:nth-of-type(2) {
+    grid-area: stock;
+    justify-self: end;
+    align-self: start;
+  }
+  .badgeStockHigh, .badgeStockLow {
+    padding: 1px 6px;
+    font-size: 0.65rem;
+  }
+
+  /* --- ÁREA 3: COSTO --- */
+  .table td:nth-of-type(3) {
+    grid-area: cost;
+    display: flex !important;
+    flex-direction: column; /* Apilado para ahorrar ancho */
+    justify-content: center;
+    align-self: end;
+    margin-top: 4px;
+  }
+  
+  .table td:nth-of-type(3) {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    font-family: monospace;
+    line-height: 1;
+  }
+  
+  .table td:nth-of-type(3)::before {
+    content: "Costo";
+    font-size: 0.55rem;
+    color: #64748b;
+    text-transform: uppercase;
+    margin-bottom: 0px;
+  }
+
+  /* --- ÁREA 4: PRECIO --- */
+  .table td:nth-of-type(4) {
+    grid-area: price;
+    justify-self: end;
+    align-self: end;
+    text-align: right;
+    margin-top: 4px;
+  }
+  
+  .price {
+    font-size: 1rem;
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  /* --- ÁREA 5: ACCIONES (Botones más bajitos) --- */
+  .table td:last-child {
+    grid-area: actions;
+    margin-top: 6px; 
+    padding-top: 6px;
+    border-top: 1px solid rgba(51, 65, 85, 0.5); /* Línea más sutil */
+    width: 100%;
+  }
+
+  .actionsCell {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr; 
+    gap: 6px;
+    width: 100%;
+  }
+
+  /* Botones con altura reducida para compactar la tarjeta */
+  .iconBtnAdd, .iconBtnEdit, .iconBtnDelete {
+    width: 100%; 
+    height: 32px; /* Altura reducida de 36px a 32px */
+    border-radius: 6px;
+  }
+  
+  .iconBtnAdd svg, .iconBtnEdit svg, .iconBtnDelete svg {
+    width: 16px;
+    height: 16px;
   }
 }
 

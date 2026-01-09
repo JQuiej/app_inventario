@@ -2,18 +2,63 @@
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 
-// 1. Obtener productos (Stock > 0) (CORREGIDO)
+// --- NUEVA FUNCIÓN: OBTENER CATEGORÍAS ---
+export async function getCategorias() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+  
+  const { data } = await supabase
+    .from('categorias')
+    .select('*')
+    .eq('usuario_id', user.id)
+    .order('nombre', { ascending: true })
+    
+  return data || []
+}
+
+// --- VERIFICAR SI UN PRODUCTO TIENE REEMBOLSO (TAM) ACTIVO ---
+export async function getReembolsoActivo(productoId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return 0
+
+  const hoy = new Date().toISOString()
+
+  // Buscamos en la tabla de relación si hay una promoción activa para hoy
+  const { data } = await supabase
+    .from('promocion_productos')
+    .select(`
+      monto_descuento,
+      promocion_id!inner (
+        activo,
+        fecha_inicio,
+        fecha_fin,
+        usuario_id
+      )
+    `)
+    .eq('producto_id', productoId)
+    .eq('promocion_id.usuario_id', user.id)
+    .eq('promocion_id.activo', true)
+    .lte('promocion_id.fecha_inicio', hoy) // Que haya empezado
+    .gte('promocion_id.fecha_fin', hoy)    // Que no haya terminado
+    .maybeSingle()
+
+  // Si encontramos algo, devolvemos el monto, si no, 0
+  return data ? Number(data.monto_descuento) : 0
+}
+
+// 1. Obtener productos (Stock > 0)
 export async function getProductosParaVenta() {
   const supabase = await createClient()
   
-  // Verificar usuario
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return []
 
   const { data, error } = await supabase
     .from('productos')
     .select('*')
-    .eq('usuario_id', user.id) // <--- FILTRO DE SEGURIDAD
+    .eq('usuario_id', user.id)
     .gt('stock_actual', 0)
     .order('nombre')
   
@@ -21,20 +66,28 @@ export async function getProductosParaVenta() {
   return data
 }
 
-// 2. Obtener historial filtrado (CORREGIDO)
-export async function getHistorialFiltrado(fechaInicio: string, fechaFin: string) {
+// 2. Obtener historial filtrado (MODIFICADO PARA CATEGORÍA)
+export async function getHistorialFiltrado(fechaInicio: string, fechaFin: string, categoriaId: string = '') {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return []
   
-  const { data, error } = await supabase
+  // Usamos productos!inner para poder filtrar por la categoría del producto relacionado
+  let query = supabase
     .from('movimientos_inventario')
-    .select('*, productos(nombre)') 
-    .eq('usuario_id', user.id) // <--- FILTRO DE SEGURIDAD
+    .select('*, productos!inner(id, nombre, categoria_id)') 
+    .eq('usuario_id', user.id)
     .eq('tipo_movimiento', 'SALIDA')
     .gte('creado_en', fechaInicio)
     .lte('creado_en', fechaFin)
     .order('creado_en', { ascending: false })
+
+  // APLICAR FILTRO SI EXISTE
+  if (categoriaId && categoriaId !== 'todas') {
+    query = query.eq('productos.categoria_id', categoriaId)
+  }
+
+  const { data, error } = await query
 
   if (error) {
     console.error('Error historial:', error)
@@ -55,8 +108,7 @@ export async function eliminarVenta(id: string) {
 
   if (!venta) return { error: 'Venta no encontrada' }
 
-  // 2. Devolver stock al producto (RPC o Update directo si no tienes RPC compleja)
-  // Aquí lo hacemos recuperando el producto y sumando (más seguro en transacciones simples)
+  // 2. Devolver stock al producto
   const { data: producto } = await supabase
     .from('productos')
     .select('stock_actual')
@@ -78,7 +130,7 @@ export async function eliminarVenta(id: string) {
   return { success: true }
 }
 
-// 4. ACTUALIZAR VENTA (Ajusta el stock según la diferencia)
+// 4. ACTUALIZAR VENTA
 export async function actualizarVenta(id: string, nuevaCantidad: number, nuevoPrecio: number) {
   const supabase = await createClient()
 
@@ -92,8 +144,6 @@ export async function actualizarVenta(id: string, nuevaCantidad: number, nuevoPr
   if (!ventaOriginal) return
 
   // 2. Calcular diferencia de stock
-  // Si antes vendí 5 y ahora digo que son 3, sobran 2 -> Sumar 2 al stock
-  // Si antes vendí 5 y ahora digo que son 8, faltan 3 -> Restar 3 al stock
   const diferencia = ventaOriginal.cantidad - nuevaCantidad
 
   if (diferencia !== 0) {
@@ -163,12 +213,12 @@ export async function crearVenta(data: VentaData) {
   if (error) throw new Error("No se pudo registrar la venta")
 
   // =================================================================================
-  // 3. LÓGICA TAM (NUEVA POR PRODUCTO ESPECÍFICO)
+  // 3. LÓGICA TAM (INTACTA)
   // =================================================================================
   const hoy = new Date().toISOString()
   
   // Buscamos si este producto pertenece a alguna campaña activa del usuario
-const { data: relacionPromocion } = await supabase
+  const { data: relacionPromocion } = await supabase
     .from('promocion_productos')
     .select(`
       monto_descuento,

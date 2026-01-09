@@ -252,7 +252,7 @@ export default function ProductosPage() {
                         {prod.nombre}
                         {!prod.activo && <span className="text-xs bg-red-900 text-red-200 px-2 py-0.5 rounded">Inactivo</span>}
                     </div>
-                    <div className={styles.sku}>{prod.sku || '-'}</div>
+                    <div className={styles.sku}>{prod.sku }</div>
                   </td>
                   <td style={{textAlign: 'center'}}>
                     <span className={prod.stock_actual < 5 ? styles.badgeStockLow : styles.badgeStockHigh}>

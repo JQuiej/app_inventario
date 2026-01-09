@@ -16,11 +16,181 @@
   margin-bottom: 2rem;
 }
 
-@media (min-width: 1024px) {
+/* =========================================
+   VISTA MÓVIL (CORREGIDA)
+   ========================================= */
+
+@media (max-width: 768px) {
+  /* 1. Contenedor principal: Ajuste estricto al ancho de pantalla */
+  .container {
+    padding: 10px;
+    width: 100%;
+    max-width: 100%; /* Usar % es más seguro que vw para evitar problemas con scrollbar */
+    overflow-x: hidden;
+    box-sizing: border-box;
+  }
+
+  /* 2. Header y Controles: Flexibilidad total */
   .header {
-    flex-direction: row;
+    gap: 1rem;
+    width: 100%;
+    margin-bottom: 1.5rem;
+  }
+  
+  .controls {
+    flex-direction: column;
+    width: 100%;
+    min-width: 0;
+  }
+
+  /* Los inputs deben poder encogerse */
+  .searchWrapper, .selectWrapper {
+    width: 100%;
+  }
+
+  .searchInput, .statusFilter, .btnPrimary {
+    width: 100%;
+    min-width: 0; 
+    box-sizing: border-box;
+  }
+
+  /* 3. Resetear la Tabla para que no tenga ancho mínimo */
+  .tableContainer {
+    background: transparent;
+    border: none;
+    width: 100%;
+    min-width: 0; /* Vital */
+    overflow: visible; 
+  }
+
+  .tableWrapper {
+    width: 100%;
+    min-width: 0; /* Vital */
+    overflow-x: visible; 
+  }
+
+  /* Convertir elementos de tabla en bloques y QUITAR EL MIN-WIDTH DE 900PX */
+  .table {
+    display: block;
+    width: 100%;
+    min-width: 0 !important; /* <--- ESTA ES LA CLAVE PARA ELIMINAR EL SCROLL */
+    border-collapse: separate; 
+  }
+
+  .table tbody, .table tr, .table td {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .table thead {
+    display: none; 
+  }
+
+  /* ESTILO DE LA TARJETA (TR) */
+  .table tr {
+    background-color: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    margin-bottom: 1rem;
+    padding: 1rem; /* Padding interno de la tarjeta */
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+    display: flex; /* Flex para mejor control del flujo vertical */
+    flex-direction: column;
+  }
+
+  /* CELDAS (TD) */
+  .table td {
+    padding: 0.5rem 0;
+    border-bottom: none;
+    text-align: left !important;
+    word-wrap: break-word; /* Evita que textos largos rompan el ancho */
+    overflow-wrap: anywhere; /* Asegura quiebre de palabras largas */
+  }
+
+  /* --- ORGANIZACIÓN INTERNA DE LA TARJETA --- */
+
+  /* A) Cliente */
+  .table td:nth-of-type(1) {
+    border-bottom: 1px solid #334155;
+    padding-bottom: 0.75rem;
+    margin-bottom: 0.5rem;
+  }
+  .table td:nth-of-type(1) > div:first-child {
+    font-size: 1.15rem !important;
+    color: #38bdf8 !important; /* Azul cyan */
+    font-weight: 700;
+  }
+
+  /* B) Falla (Caja gris) */
+  .table td:nth-of-type(2) {
+    background: rgba(15, 23, 42, 0.5);
+    padding: 0.75rem;
+    border-radius: 8px;
+    margin-bottom: 0.75rem;
+    border: 1px solid #334155;
+  }
+
+  /* C) Estado */
+  .table td:nth-of-type(3) {
+    display: flex;
     justify-content: space-between;
     align-items: center;
+    margin-bottom: 0.5rem;
+  }
+  /* Contenedor interno del estado para que ocupe espacio */
+  .table td:nth-of-type(3) > div {
+    width: 100%;
+  }
+
+  /* D) Costo */
+  .table td:nth-of-type(4) {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px dashed #475569;
+    padding-top: 0.75rem;
+    margin-top: 0.25rem;
+    font-size: 0.9rem;
+    color: #94a3b8;
+  }
+  .table td:nth-of-type(4)::before {
+    content: "Costo Reparación:";
+  }
+
+  /* E) Total a Cobrar */
+  .table td:nth-of-type(5) {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+  }
+  .table td:nth-of-type(5)::before {
+    content: "Total a Cobrar:";
+    color: #cbd5e1;
+    font-weight: 700;
+    font-size: 0.95rem;
+  }
+
+  /* F) Botones de Acción */
+  .table td:last-child {
+    padding-top: 0;
+    margin-top: 0.5rem;
+  }
+  
+  /* Forzamos el div .actions a comportarse como grid */
+  .table td:last-child > div.actions {
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr); /* 4 botones iguales */
+    gap: 0.75rem; /* Espacio entre botones */
+    width: 100%;
+  }
+  
+  .iconBtn {
+    width: 100%;
+    height: 44px; /* Botones fáciles de tocar */
+    border-radius: 8px;
   }
 }
 

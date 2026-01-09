@@ -1,13 +1,15 @@
-/* app/dashboard/ventas/ventas.module.css */
+/* =========================================
+   ESTILOS GENERALES (ESCRITORIO - INTACTO)
+   ========================================= */
 
 .container {
-  padding: 1.5rem; /* Reducimos un poco el padding */
-  width: 100%;     /* Ocupa el 100% del espacio disponible (descontando sidebar) */
-  max-width: 1600px; /* Límite máximo generoso */
-  margin: 0;       /* Quitamos auto para que pegue bien al sidebar */
+  padding: 1.5rem;
+  width: 100%;
+  max-width: 1600px;
+  margin: 0;
   font-family: system-ui, -apple-system, sans-serif;
   color: #f8fafc;
-  box-sizing: border-box; /* Vital para que el padding no sume ancho */
+  box-sizing: border-box;
 }
 
 .title {
@@ -17,37 +19,31 @@
   margin-bottom: 1.5rem;
 }
 
-/* --- GRID LAYOUT (LA CORRECCIÓN ESTÁ AQUÍ) --- */
+/* GRID PRINCIPAL */
 .grid {
   display: grid;
-  grid-template-columns: 1fr; /* Móvil: 1 columna */
+  grid-template-columns: 1fr;
   gap: 1.5rem;
   align-items: start;
   width: 100%;
 }
 
-/* En escritorio: Panel izquierdo fijo, derecho flexible PERO CONTENIDO */
 @media (min-width: 1024px) {
   .grid {
-    /* minmax(0, 1fr) es el truco mágico. 
-       Evita que la tabla empuje el ancho infinito. 
-    */
     grid-template-columns: 350px minmax(0, 1fr);
   }
 }
 
-/* --- PANELES --- */
+/* PANELES */
 .panel {
   background-color: #1e293b;
   padding: 1.5rem;
   border-radius: 16px;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   border: 1px solid #334155;
-  
-  /* Esto asegura que el contenido interno no rompa el panel */
   display: flex;
   flex-direction: column;
-  min-width: 0; 
+  min-width: 0;
 }
 
 .subtitle {
@@ -59,7 +55,7 @@
   border-bottom: 2px solid #334155;
 }
 
-/* --- HEADER DEL HISTORIAL --- */
+/* HEADER HISTORIAL */
 .historyHeader {
   display: flex;
   flex-direction: column;
@@ -80,7 +76,7 @@
 .headerTitleGroup { display: flex; align-items: center; gap: 10px; }
 .loader { font-size: 0.8rem; color: #3b82f6; animation: pulse 1s infinite; }
 
-/* --- FILTROS --- */
+/* FILTROS */
 .filterBar { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 .selectWrapper { position: relative; display: flex; align-items: center; }
 .iconSelect { position: absolute; left: 10px; color: #94a3b8; pointer-events: none; z-index: 5; }
@@ -97,7 +93,7 @@
 }
 .selectFilter:focus { border-color: #3b82f6; outline: none; }
 
-/* --- TARJETA DE RESUMEN --- */
+/* TARJETA RESUMEN */
 .summaryCard {
   background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
   border: 1px solid #3b82f6;
@@ -112,10 +108,10 @@
 .summaryLabel { color: #94a3b8; font-weight: 600; font-size: 0.8rem; text-transform: uppercase; }
 .summaryValue { font-size: 1.5rem; font-weight: 800; color: #34d399; display: flex; align-items: center; gap: 5px; }
 
-/* --- TABLA (RESPONSIVA) --- */
+/* TABLA (ESCRITORIO) */
 .tableWrapper {
-  width: 100%; /* Asegura que no exceda el padre */
-  overflow-x: auto; /* Scroll horizontal si es necesario */
+  width: 100%;
+  overflow-x: auto;
   border: 1px solid #334155;
   border-radius: 8px;
   background-color: #0f172a;
@@ -126,7 +122,7 @@
   border-collapse: collapse;
   font-size: 0.85rem;
   text-align: left;
-  min-width: 500px; /* Mínimo para que no se aplaste mucho */
+  min-width: 600px;
 }
 
 .table th {
@@ -136,7 +132,7 @@
   font-weight: 700;
   text-transform: uppercase;
   border-bottom: 1px solid #334155;
-  white-space: nowrap; /* Títulos en una línea */
+  white-space: nowrap;
 }
 
 .table td {
@@ -154,3 +150,160 @@
 .badgeQty { background-color: #334155; color: #f8fafc; padding: 2px 8px; border-radius: 4px; font-weight: 600; }
 
 @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
+
+/* =========================================
+   VISTA MÓVIL (CORREGIDA - SIN SOBREPOSICIÓN)
+   ========================================= */
+
+@media (max-width: 768px) {
+  
+  /* 1. Ajustes Generales */
+  .container {
+    padding: 10px;
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
+    box-sizing: border-box;
+  }
+
+  .title {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .grid {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .panel {
+    padding: 1rem;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* 2. Reset Tabla */
+  .tableWrapper {
+    background: transparent;
+    border: none;
+    width: 100%;
+    overflow: visible;
+  }
+
+  .table, .table tbody, .table tr, .table td {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .table { min-width: 0 !important; }
+  .table thead { display: none; }
+
+  /* 3. RENGLÓN COMPACTO (GRID 2 FILAS) */
+  .table tr {
+    background-color: #1e293b;
+    border-bottom: 1px solid #334155;
+    padding: 8px 0;
+    
+    /* Grid Layout Corregido:
+       - Columnas: Info(flexible) | Cant | Precio | Acciones
+       - Filas: Nombre | Fecha
+    */
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto auto;
+    grid-template-rows: auto auto; /* Dos filas automáticas */
+    gap: 2px 10px; /* Gap vertical mínimo, horizontal normal */
+    align-items: center;
+  }
+
+  /* Reset celdas */
+  .table td {
+    padding: 0;
+    border: none;
+    background: transparent !important;
+  }
+
+  /* --- [A] NOMBRE DEL PRODUCTO --- */
+  .table td:nth-of-type(1) {
+    grid-column: 1; /* Columna 1 */
+    grid-row: 1;    /* Fila 1 (Arriba) */
+    
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end; /* Pegado abajo hacia la fecha */
+  }
+
+  .table td:nth-of-type(1) > div { 
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #f8fafc;
+    /* Cortar si es muy largo */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
+  }
+
+  /* --- [B] FECHA (Debajo del nombre) --- */
+  .table td:nth-of-type(4) {
+    grid-column: 1; /* Columna 1 */
+    grid-row: 2;    /* Fila 2 (Abajo) */
+    align-self: start; /* Pegado arriba hacia el nombre */
+    
+    font-size: 0.7rem !important;
+    color: #94a3b8;
+    text-align: left !important;
+    line-height: 1.2;
+  }
+
+  /* --- [C] ELEMENTOS LATERALES (Centrados verticalmente) --- */
+  /* Cantidad, Total y Acciones ocupan las 2 filas para centrarse */
+  
+  /* Cantidad */
+  .table td:nth-of-type(2) {
+    grid-column: 2;
+    grid-row: 1 / span 2; 
+    align-self: center;
+  }
+  .badgeQty {
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    background-color: rgba(51, 65, 85, 0.5);
+  }
+
+  /* Total (Precio) */
+  .table td:nth-of-type(3) {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+    align-self: center;
+    text-align: right;
+  }
+  .money {
+    font-size: 0.9rem;
+    color: #34d399;
+  }
+
+  /* Acciones (Botones) */
+  .table td:last-child {
+    grid-column: 4;
+    grid-row: 1 / span 2;
+    align-self: center;
+    display: flex;
+    justify-content: flex-end;
+    gap: 5px; /* Espacio entre botones */
+  }
+  
+  /* Estilo botones en móvil (pequeños) */
+  .table td:last-child button {
+    padding: 0;
+    height: 32px;
+    width: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    border: none;
+  }
+}

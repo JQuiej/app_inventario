@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { toast } from 'sonner'
-import { Plus, Calendar, Tag, Search, Trash2, Edit, X, Eye, Loader2 } from 'lucide-react' // <--- Agregado Loader2
+import { Plus, Calendar, Tag, Search, Trash2, Edit, X, Eye, Loader2 } from 'lucide-react'
 
 import { 
   crearCampana, 
@@ -16,17 +16,35 @@ import {
 
 import styles from './reembolsos.module.css'
 
+// --- FUNCIÓN HELPER PARA CORREGIR FECHAS ---
+// Esta función asegura que la fecha se muestre tal cual viene de la BD (UTC)
+// sin restarle horas por la zona horaria local.
+const formatDateUTC = (dateString: string) => {
+  if (!dateString) return ''
+  const date = new Date(dateString)
+  return new Intl.DateTimeFormat('es-GT', {
+    timeZone: 'UTC', // <--- ESTO ES LA CLAVE: Forzamos UTC
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  }).format(date)
+}
+
+// Función para obtener el string YYYY-MM-DD para los inputs date sin desfase
+const getInputDateValue = (dateString: string) => {
+    if (!dateString) return ''
+    // Cortamos el string ISO directamente antes de la 'T' para evitar conversiones de zona horaria
+    // Ej: "2025-12-01T00:00:00..." -> "2025-12-01"
+    return dateString.split('T')[0]
+}
+
 export default function ReembolsosPage() {
-  // Estados de datos
+  // ... (Tus estados se mantienen igual)
   const [campanas, setCampanas] = useState<any[]>([])
   const [categorias, setCategorias] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-
-  // Estados para Modales
   const [editingCampaign, setEditingCampaign] = useState<any | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
-  
-  // Estado para el Modal de Historial
   const [historyCampaign, setHistoryCampaign] = useState<any | null>(null)
 
   const loadData = async () => {
@@ -36,10 +54,8 @@ export default function ReembolsosPage() {
             getCampanasConBalance(), 
             getCategorias()
         ])
-        
         setCampanas(Array.isArray(c) ? c : [])
         setCategorias(Array.isArray(cats) ? cats : [])
-
     } catch (error) {
         console.error(error)
         toast.error("Error al cargar datos")
@@ -49,7 +65,6 @@ export default function ReembolsosPage() {
 
   useEffect(() => { loadData() }, [])
 
-  // Eliminar Campaña con SONNER (Confirmación bonita)
   const handleDelete = (id: string) => {
     toast("¿Estás seguro de eliminar esta campaña?", {
         description: "Se borrará la configuración y el historial asociado.",
@@ -65,20 +80,15 @@ export default function ReembolsosPage() {
                 }
             }
         },
-        cancel: { 
-        label: 'Cancelar',
-        onClick: () => {}
-      },
+        cancel: { label: 'Cancelar', onClick: () => {} },
     })
   }
 
-  // Abrir Modal Editar
   const handleEdit = (campana: any) => {
     setEditingCampaign(campana)
     setIsModalOpen(true)
   }
 
-  // Abrir Modal Crear
   const handleCreate = () => {
     setEditingCampaign(null)
     setIsModalOpen(true)
@@ -86,31 +96,24 @@ export default function ReembolsosPage() {
 
   return (
     <div className={styles.container}>
-      
       <div className={styles.header}>
         <h1 className={styles.title}>Feria de Descuentos (TAM)</h1>
       </div>
 
-      {/* --- VISTA ÚNICA: CARTERA DE CAMPAÑAS --- */}
       <div>
         <button onClick={handleCreate} className={styles.btnNew}>
             <Plus size={18}/> Nueva Campaña
         </button>
 
-        {/* Modal Creación/Edición */}
         {isModalOpen && (
             <CampaignModal 
                 categorias={categorias} 
                 initialData={editingCampaign}
                 onClose={() => setIsModalOpen(false)}
-                onSave={() => {
-                    loadData()
-                    setIsModalOpen(false)
-                }} 
+                onSave={() => { loadData(); setIsModalOpen(false) }} 
             />
         )}
 
-        {/* Modal Historial */}
         {historyCampaign && (
             <HistoryModal 
                 campana={historyCampaign} 
@@ -129,32 +132,14 @@ export default function ReembolsosPage() {
                     <div key={c.id} className={`${styles.campaignCard} ${!isActive ? styles.campaignCardInactive : ''}`}>
                         <div className={styles.cardHeader}>
                             <span className={styles.categoryTag}>{c.categorias?.nombre}</span>
-                            
                             <div className="flex items-center gap-2">
-                                {/* Botón Historial (OJO) */}
-                                <button 
-                                    onClick={() => setHistoryCampaign(c)}
-                                    className="p-1 text-gray-400 hover:text-green-400 transition-colors"
-                                    title="Ver Historial de Ventas y Pagos"
-                                >
+                                <button onClick={() => setHistoryCampaign(c)} className="p-1 text-gray-400 hover:text-green-400 transition-colors" title="Ver Historial">
                                     <Eye size={16} />
                                 </button>
-
-                                {/* Botón Editar */}
-                                <button 
-                                    onClick={() => handleEdit(c)}
-                                    className="p-1 text-gray-400 hover:text-blue-400 transition-colors"
-                                    title="Editar Campaña"
-                                >
+                                <button onClick={() => handleEdit(c)} className="p-1 text-gray-400 hover:text-blue-400 transition-colors" title="Editar">
                                     <Edit size={14} />
                                 </button>
-
-                                {/* Botón Eliminar */}
-                                <button 
-                                    onClick={() => handleDelete(c.id)}
-                                    className="p-1 text-gray-400 hover:text-red-400 transition-colors"
-                                    title="Eliminar Campaña"
-                                >
+                                <button onClick={() => handleDelete(c.id)} className="p-1 text-gray-400 hover:text-red-400 transition-colors" title="Eliminar">
                                     <Trash2 size={14} />
                                 </button>
                             </div>
@@ -165,9 +150,10 @@ export default function ReembolsosPage() {
                             {isActive ? <span className={styles.statusTextActive}>Activa</span> : <span className={styles.statusTextFinished}>Cerrada</span>}
                         </div>
 
+                        {/* --- AQUI APLICAMOS LA CORRECCION DE FECHA EN LA TARJETA --- */}
                         <div className={styles.campaignDates}>
                             <Calendar size={14}/> 
-                            {new Date(c.fecha_inicio).toLocaleDateString()} - {new Date(c.fecha_fin).toLocaleDateString()}
+                            {formatDateUTC(c.fecha_inicio)} - {formatDateUTC(c.fecha_fin)}
                         </div>
 
                         <div style={{marginTop:'1rem', padding:'1rem', background:'rgba(15, 23, 42, 0.5)', borderRadius:'8px'}}>
@@ -202,22 +188,16 @@ export default function ReembolsosPage() {
 function CampaignModal({ categorias, initialData, onClose, onSave }: { categorias: any[], initialData?: any, onClose: () => void, onSave: () => void }) {
     const dialogRef = useRef<HTMLDialogElement>(null)
     const [loadingProds, setLoadingProds] = useState(false)
-    const [isSubmitting, setIsSubmitting] = useState(false) // <--- NUEVO ESTADO CARGA
+    const [isSubmitting, setIsSubmitting] = useState(false)
     const [productos, setProductos] = useState<any[]>([]) 
     
-    // CORRECCIÓN EDITAR: Inicializar correctamente la categoría para que el buscador funcione
     const [selectedCat, setSelectedCat] = useState(initialData?.categoria_id || '')
-    
-    // BÚSQUEDA
     const [searchTerm, setSearchTerm] = useState('')
     const [searchResults, setSearchResults] = useState<any[]>([])
 
-    // PRODUCTOS SELECCIONADOS
     const [addedProducts, setAddedProducts] = useState<any[]>(() => {
         if (!initialData) return []
-        // Mapeo inteligente para soportar estructura anidada o plana
         const listaDB = initialData.promociones_productos || initialData.promocion_productos || []
-        
         if (listaDB.length > 0) {
             return listaDB.map((item: any) => ({
                 id: item.productos?.id,      
@@ -228,68 +208,44 @@ function CampaignModal({ categorias, initialData, onClose, onSave }: { categoria
         return initialData.productos_configurados || []
     })
 
-    // Efecto abrir modal
-    useEffect(() => {
-        dialogRef.current?.showModal()
-    }, [])
+    useEffect(() => { dialogRef.current?.showModal() }, [])
 
-    // Cargar productos al cambiar categoría
     useEffect(() => {
-        if (!selectedCat) {
-            setProductos([])
-            return
-        }
+        if (!selectedCat) { setProductos([]); return }
         setLoadingProds(true)
         getProductosDeCategoria(selectedCat).then(data => {
-            setProductos(data)
-            setLoadingProds(false)
+            setProductos(data); setLoadingProds(false)
         })
     }, [selectedCat])
 
-    // Buscador local
     useEffect(() => {
-        if (searchTerm.trim() === '') {
-            setSearchResults([])
-            return
-        }
-        const filtered = productos.filter(p => 
-            p.nombre.toLowerCase().includes(searchTerm.toLowerCase()) &&
-            !addedProducts.find(added => added.id === p.id)
-        )
+        if (searchTerm.trim() === '') { setSearchResults([]); return }
+        const filtered = productos.filter(p => p.nombre.toLowerCase().includes(searchTerm.toLowerCase()) && !addedProducts.find(added => added.id === p.id))
         setSearchResults(filtered)
     }, [searchTerm, productos, addedProducts])
 
-    const handleAddProduct = (prod: any) => {
-        setAddedProducts([...addedProducts, { id: prod.id, nombre: prod.nombre, monto: 0 }])
-        setSearchTerm('')
-    }
-
-    const handleRemoveProduct = (id: string) => {
-        setAddedProducts(addedProducts.filter(p => p.id !== id))
-    }
-
+    const handleAddProduct = (prod: any) => { setAddedProducts([...addedProducts, { id: prod.id, nombre: prod.nombre, monto: 0 }]); setSearchTerm('') }
+    const handleRemoveProduct = (id: string) => { setAddedProducts(addedProducts.filter(p => p.id !== id)) }
     const handleAmountChange = (id: string, val: string) => {
-        const monto = parseFloat(val) || 0
-        setAddedProducts(addedProducts.map(p => p.id === id ? { ...p, monto } : p))
+        const monto = parseFloat(val) || 0; setAddedProducts(addedProducts.map(p => p.id === id ? { ...p, monto } : p))
     }
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
-        if (isSubmitting) return; // <--- PREVENIR DOBLE CLIC
+        if (isSubmitting) return;
 
         const formData = new FormData(e.currentTarget)
         
-        // --- CORRECCIÓN FECHA: NO SUMAR DÍA, SINO ESTABLECER HORA FINAL ---
+        // CORRECCIÓN FECHA: Fijamos la hora final
         const fechaFinRaw = formData.get('fecha_fin') as string
         if (fechaFinRaw) {
             formData.set('fecha_fin', `${fechaFinRaw} 23:59:59`)
         }
-        // ----------------------------------------------------
 
         if (addedProducts.length === 0) return toast.error("Selecciona al menos un producto")
         if (addedProducts.some(p => p.monto <= 0)) return toast.error("Descuentos deben ser mayores a 0")
 
-        setIsSubmitting(true) // <--- ACTIVAR CARGA
+        setIsSubmitting(true)
         try {
             if (initialData) {
                 await actualizarCampana(initialData.id, formData, addedProducts)
@@ -304,7 +260,7 @@ function CampaignModal({ categorias, initialData, onClose, onSave }: { categoria
             console.error(error)
             toast.error("Error al guardar campaña")
         } finally {
-            setIsSubmitting(false) // <--- DESACTIVAR CARGA
+            setIsSubmitting(false)
         }
     }
 
@@ -325,17 +281,18 @@ function CampaignModal({ categorias, initialData, onClose, onSave }: { categoria
                     <input name="nombre" required defaultValue={initialData?.nombre} className={styles.input} disabled={isSubmitting} />
                 </div>
                 <div className={styles.formRow}>
+                    {/* --- CORRECCIÓN EN INPUTS: USAR getInputDateValue PARA QUE NO SE MUEVA EL DÍA AL EDITAR --- */}
                     <div className={styles.formGroup}>
                          <label className={styles.label}>Inicio</label>
                          <input name="fecha_inicio" type="date" required 
-                            defaultValue={initialData?.fecha_inicio ? new Date(initialData.fecha_inicio).toISOString().split('T')[0] : ''}
+                            defaultValue={getInputDateValue(initialData?.fecha_inicio)}
                             className={styles.input} disabled={isSubmitting}
                         />
                     </div>
                     <div className={styles.formGroup}>
                          <label className={styles.label}>Termina</label>
                          <input name="fecha_fin" type="date" required 
-                            defaultValue={initialData?.fecha_fin ? new Date(initialData.fecha_fin).toISOString().split('T')[0] : ''}
+                            defaultValue={getInputDateValue(initialData?.fecha_fin)}
                             className={styles.input} disabled={isSubmitting}
                         />
                     </div>
@@ -347,29 +304,28 @@ function CampaignModal({ categorias, initialData, onClose, onSave }: { categoria
                     <label className={styles.label}>1. Filtrar por Categoría</label>
                     <select name="categoria_id" required className={styles.select} value={selectedCat} disabled={isSubmitting}
                         onChange={(e) => { 
-                            // Advertencia opcional: Si cambias de categoría, se limpian los productos seleccionados
                             if(initialData && addedProducts.length > 0) {
                                 if(!confirm("Si cambias la categoría se reiniciará la lista de productos. ¿Continuar?")) return;
                             }
                             setSelectedCat(e.target.value); 
                             setAddedProducts([]) 
                         }}
-                        >
+                    >
                         <option value="">-- Seleccionar --</option>
                         {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
                     </select>
                 </div>
 
+                {/* (El resto del componente CampaignModal se mantiene igual que antes...) */}
                 <div className={styles.formGroup}>
                     <label className={styles.label}>2. Buscar y Agregar Modelos</label>
-                    
                     <div className="relative mb-4">
                         <div className="flex items-center bg-[#0f172a] border border-[#334155] rounded px-2">
                             <Search size={16} className="text-gray-400 mr-2" />
                             <input type="text" placeholder={loadingProds ? "Cargando..." : "Buscar modelo..."}
                                 className="w-full bg-transparent border-none outline-none text-white py-2 text-sm"
                                 value={searchTerm} onChange={e => setSearchTerm(e.target.value)} 
-                                disabled={!selectedCat || isSubmitting} // Solo se deshabilita si NO hay categoría seleccionada o enviando
+                                disabled={!selectedCat || isSubmitting}
                             />
                         </div>
                         {searchResults.length > 0 && (
@@ -382,7 +338,6 @@ function CampaignModal({ categorias, initialData, onClose, onSave }: { categoria
                             </ul>
                         )}
                     </div>
-
                     <div className="bg-[#1e293b] border border-[#334155] rounded-md overflow-hidden">
                         <table className="w-full text-sm text-left">
                             <thead className="bg-[#0f172a] text-gray-400">
@@ -408,9 +363,7 @@ function CampaignModal({ categorias, initialData, onClose, onSave }: { categoria
                                         </td>
                                     </tr>
                                 ))}
-                                {addedProducts.length === 0 && (
-                                    <tr><td colSpan={3} className="px-3 py-4 text-center text-gray-500 italic">Sin productos seleccionados.</td></tr>
-                                )}
+                                {addedProducts.length === 0 && <tr><td colSpan={3} className="px-3 py-4 text-center text-gray-500 italic">Sin productos seleccionados.</td></tr>}
                             </tbody>
                         </table>
                     </div>
@@ -433,11 +386,11 @@ function PaymentModal({ campana, onSave }: { campana: any, onSave: () => void })
     const dialogRef = useRef<HTMLDialogElement>(null)
     const [monto, setMonto] = useState('')
     const [notas, setNotas] = useState('')
-    const [isSubmitting, setIsSubmitting] = useState(false) // <--- NUEVO ESTADO CARGA
+    const [isSubmitting, setIsSubmitting] = useState(false)
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (isSubmitting) return; // <--- PREVENIR DOBLE CLIC
+        if (isSubmitting) return;
 
         setIsSubmitting(true)
         try {
@@ -462,7 +415,7 @@ function PaymentModal({ campana, onSave }: { campana: any, onSave: () => void })
                     color: campana.saldo_pendiente > 0.01 ? 'white' : '#64748b'
                 }}
             >
-                {campana.saldo_pendiente > 0.01 ? 'Registrar Pago Proveedor' : 'Saldado'}
+                {campana.saldo_pendiente > 0.01 ? 'Registrar Pago' : 'Saldado'}
             </button>
 
             <dialog ref={dialogRef} className={styles.dialog} style={{width:'350px'}} onClose={!isSubmitting ? () => dialogRef.current?.close() : undefined}>
@@ -497,7 +450,7 @@ function PaymentModal({ campana, onSave }: { campana: any, onSave: () => void })
     )
 }
 
-// --- MODAL HISTORIAL (CORREGIDO FECHAS) ---
+// --- MODAL HISTORIAL ---
 function HistoryModal({ campana, onClose }: { campana: any, onClose: () => void }) {
     const dialogRef = useRef<HTMLDialogElement>(null)
     const [tab, setTab] = useState<'ventas' | 'pagos'>('ventas')
@@ -512,14 +465,7 @@ function HistoryModal({ campana, onClose }: { campana: any, onClose: () => void 
         })
     }, [campana.id])
 
-    // Función auxiliar para renderizar fechas de forma segura
-    const renderDate = (dateString: string) => {
-        if (!dateString) return '-';
-        // Crear fecha asegurando compatibilidad con UTC
-        const date = new Date(dateString);
-        return isNaN(date.getTime()) ? '-' : date.toLocaleDateString();
-    }
-
+    // Reusamos la función helper aquí también para consistencia
     return (
         <dialog ref={dialogRef} className={styles.dialog} style={{width:'700px', maxHeight:'80vh'}} onClose={onClose}>
             <div className="flex justify-between items-center mb-4">
@@ -557,7 +503,7 @@ function HistoryModal({ campana, onClose }: { campana: any, onClose: () => void 
                             {tab === 'ventas' ? (
                                 data.ventas.length > 0 ? data.ventas.map((v: any) => (
                                     <tr key={v.id} className="border-t border-slate-800">
-                                        <td className="px-3 py-2 text-gray-300">{renderDate(v.created_at)}</td>
+                                        <td className="px-3 py-2 text-gray-300">{formatDateUTC(v.created_at)}</td>
                                         <td className="px-3 py-2 text-white">{v.movimientos_inventario?.productos?.nombre || 'N/A'}</td>
                                         <td className="px-3 py-2 text-right text-blue-300">Q{v.monto_pendiente}</td>
                                     </tr>
@@ -565,7 +511,7 @@ function HistoryModal({ campana, onClose }: { campana: any, onClose: () => void 
                             ) : (
                                 data.pagos.length > 0 ? data.pagos.map((p: any) => (
                                     <tr key={p.id} className="border-t border-slate-800">
-                                        <td className="px-3 py-2 text-gray-300">{renderDate(p.created_at || p.fecha_pago)}</td>
+                                        <td className="px-3 py-2 text-gray-300">{formatDateUTC(p.created_at || p.fecha_pago)}</td>
                                         <td className="px-3 py-2 text-gray-400 italic">{p.notas || '-'}</td>
                                         <td className="px-3 py-2 text-right text-green-400">Q{p.monto_pagado}</td>
                                     </tr>
