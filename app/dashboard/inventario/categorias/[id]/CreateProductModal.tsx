@@ -89,7 +89,7 @@ export default function CreateProductModal({
 
   return (
     <>
-      <button onClick={abrirModal} className={styles.openButton}>
+      <button onClick={abrirModal} className={styles.addButton}>
         + Nuevo Producto
       </button>
 

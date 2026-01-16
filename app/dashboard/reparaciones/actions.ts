@@ -16,7 +16,6 @@ async function getTargetUserId(supabase: any) {
   return profile?.owner_id || user.id
 }
 
-// 1. Obtener reparaciones
 export async function getReparaciones() {
   const supabase = await createClient()
   const targetId = await getTargetUserId(supabase)
@@ -26,7 +25,7 @@ export async function getReparaciones() {
     .from('reparaciones')
     .select('*')
     .eq('usuario_id', targetId)
-    .order('created_at', { ascending: false })
+    .order('ultimo_cambio_estado', { ascending: false })
 
   if (error) console.error(error)
   return data || []

@@ -147,6 +147,7 @@ export default function ReparacionesPage() {
           <table className={styles.table}>
             <thead>
               <tr>
+                <th style={{width: '50px', textAlign: 'center'}}>No.</th>
                 <th>Cliente / Recepción</th>
                 <th>Falla / Categoría</th>
                 <th>Estado Reparación</th>
@@ -161,8 +162,11 @@ export default function ReparacionesPage() {
                 <tr><td colSpan={6} style={{padding:'2rem', textAlign:'center', color:'#94a3b8'}}>No se encontraron datos.</td></tr>
               )}
 
-              {reparacionesFiltradas.map((rep) => (
+              {reparacionesFiltradas.map((rep, index) => (
                 <tr key={rep.id}>
+                  <td style={{textAlign: 'center', fontWeight: 'bold', color: '#64748b', verticalAlign: 'middle'}}>
+                    {index + 1}
+                  </td>
                   <td>
                     <div style={{fontWeight:'bold', color:'white'}}>{rep.cliente_nombre}</div>
                     <div style={{fontSize:'0.8rem', color:'#cbd5e1'}}>{rep.dispositivo}</div>

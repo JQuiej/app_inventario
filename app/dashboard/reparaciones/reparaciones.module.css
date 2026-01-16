@@ -88,15 +88,27 @@
   }
 
   /* ESTILO DE LA TARJETA (TR) */
-  .table tr {
-    background-color: #1e293b;
-    border: 1px solid #334155;
-    border-radius: 12px;
-    margin-bottom: 1rem;
-    padding: 1rem; /* Padding interno de la tarjeta */
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
-    display: flex; /* Flex para mejor control del flujo vertical */
+.table tr {
+    position: relative; /* Necesario para ubicar el correlativo */
+    display: flex;
     flex-direction: column;
+    gap: 0.5rem;
+    
+    /* 1. FONDO DEGRADADO SUTIL */
+    background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+    
+    /* 2. BORDE SUPERIOR DE COLOR (Highlight) */
+    border-top: 4px solid #3d89aa; /* Azul cielo vibrante */
+    border-bottom: 1px solid #334155;
+    border-left: 1px solid #334155;
+    border-right: 1px solid #334155;
+    
+    border-radius: 12px; /* Bordes redondeados */
+    margin-bottom: 1.25rem; /* Separación entre cards */
+    padding: 1.25rem;
+    
+    /* Sombra suave */
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
   }
 
   /* CELDAS (TD) */
@@ -110,20 +122,25 @@
 
   /* --- ORGANIZACIÓN INTERNA DE LA TARJETA --- */
 
-  /* A) Cliente */
   .table td:nth-of-type(1) {
+    border-bottom: 1px solid #334155;
+    padding-bottom: 0.1rem;
+    margin-bottom: 0.05rem;
+  }
+  /* A) Cliente */
+  .table td:nth-of-type(2) {
     border-bottom: 1px solid #334155;
     padding-bottom: 0.75rem;
     margin-bottom: 0.5rem;
   }
-  .table td:nth-of-type(1) > div:first-child {
+  .table td:nth-of-type(2) > div:first-child {
     font-size: 1.15rem !important;
     color: #38bdf8 !important; /* Azul cyan */
     font-weight: 700;
   }
 
   /* B) Falla (Caja gris) */
-  .table td:nth-of-type(2) {
+  .table td:nth-of-type(3) {
     background: rgba(15, 23, 42, 0.5);
     padding: 0.75rem;
     border-radius: 8px;
@@ -132,19 +149,19 @@
   }
 
   /* C) Estado */
-  .table td:nth-of-type(3) {
+  .table td:nth-of-type(4) {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 0.5rem;
   }
   /* Contenedor interno del estado para que ocupe espacio */
-  .table td:nth-of-type(3) > div {
+  .table td:nth-of-type(4) > div {
     width: 100%;
   }
 
   /* D) Costo */
-  .table td:nth-of-type(4) {
+  .table td:nth-of-type(5) {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -154,19 +171,19 @@
     font-size: 0.9rem;
     color: #94a3b8;
   }
-  .table td:nth-of-type(4)::before {
+  .table td:nth-of-type(5)::before {
     content: "Costo Reparación:";
   }
 
   /* E) Total a Cobrar */
-  .table td:nth-of-type(5) {
+  .table td:nth-of-type(6) {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 1rem;
     font-size: 1.1rem;
   }
-  .table td:nth-of-type(5)::before {
+  .table td:nth-of-type(6)::before {
     content: "Total a Cobrar:";
     color: #cbd5e1;
     font-weight: 700;
