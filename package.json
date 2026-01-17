@@ -12,6 +12,7 @@
     "@ducanh2912/next-pwa": "^10.2.9",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.87.1",
+    "@zxing/library": "^0.21.3",
     "clsx": "^2.1.1",
     "html5-qrcode": "^2.3.8",
     "lucide-react": "^0.559.0",
@@ -20,9 +21,12 @@
     "react": "19.2.1",
     "react-dom": "19.2.1",
     "react-select": "^5.10.2",
+    "react-webcam": "^7.2.0",
+    "react-zxing": "^2.1.0",
     "recharts": "^3.5.1",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0",
+    "tesseract.js": "^7.0.0",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
