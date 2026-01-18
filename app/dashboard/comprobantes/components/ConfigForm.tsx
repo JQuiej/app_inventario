@@ -7,11 +7,11 @@ import { guardarConfiguracion } from '../actions'
 import styles from '../comprobantes.module.css' // Usamos los mismos estilos
 
 interface Props {
-    config: any;
-    onUpdate: () => void; // Para recargar la config en el padre
+  config: any;
+  onSave: (formData: FormData) => void;
 }
-
-export default function ConfigForm({ config, onUpdate }: Props) {
+// En tu form tag usa: action={onSave}
+export default function ConfigForm({ config, onSave }: Props) {
     const [loading, setLoading] = useState(false);
 
     // Usamos Server Actions directamente con FormData
@@ -23,7 +23,7 @@ export default function ConfigForm({ config, onUpdate }: Props) {
                 toast.error(result.error);
             } else {
                 toast.success("Configuración guardada correctamente");
-                onUpdate(); // Recargamos los datos en el padre
+                onSave(formData); // Recargamos los datos en el padre
             }
         } catch (error) {
             console.error(error);

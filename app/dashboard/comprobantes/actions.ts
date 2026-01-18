@@ -114,13 +114,12 @@ export async function guardarConfiguracion(formData: FormData) {
     }
 }
 
-// --- CREAR VENTA (SOLO DISPOSITIVOS + ACTIVACIÓN) ---
 export async function crearVentaComprobante(ventaData: any) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'No autenticado' }
 
-  const { data: prod } = await supabase.from('productos').select('*').eq('id', ventaData.producto_id).single()
+  const { data: prod } = await supabase.from('productos').select('*').eq('usuario_id', user.id).eq('id', ventaData.producto_id).single()
   if (!prod || prod.stock_actual < 1) return { error: 'Stock insuficiente' }
 
   // 1. Insertar Movimiento
@@ -131,33 +130,36 @@ export async function crearVentaComprobante(ventaData: any) {
       producto_id: ventaData.producto_id,
       tipo_movimiento: 'SALIDA',
       cantidad: 1, 
-      precio_real_venta: ventaData.precio, // Precio TOTAL cobrado
+      precio_real_venta: ventaData.precio,
       costo_unitario: prod.costo_promedio,
       notas: 'Venta Dispositivo'
     })
     .select()
     .single()
 
-  if (movError) return { error: 'Error al registrar venta' }
+  if (movError) return { error: 'Error al registrar movimiento' }
 
   // 2. Descontar Stock
   await supabase.from('productos').update({ stock_actual: prod.stock_actual - 1 }).eq('id', prod.id)
 
-  // 3. Guardar Comprobante con Datos de Activación
-  await supabase.from('ventas_comprobantes').insert({
+  // 3. Guardar Comprobante (MODIFICADO: CAPTURAMOS EL RESULTADO)
+  const { data: comprobante, error: compError } = await supabase.from('ventas_comprobantes').insert({
     movimiento_id: movimiento.id,
     usuario_id: user.id,
     cliente_nombre: ventaData.cliente_nombre,
     cliente_dpi: ventaData.cliente_dpi,
-    cliente_telefono: ventaData.cliente_telefono, // Teléfono de contacto del cliente
+    cliente_telefono: ventaData.cliente_telefono,
     imei_dispositivo: ventaData.imei,
     icc: ventaData.icc,
-    // CAMPOS NUEVOS DE ACTIVACIÓN
     telefono_activacion: ventaData.telefono_activacion || null,
     monto_activacion: ventaData.monto_activacion || 0
-  }).select().single()
+  })
+  .select() // Importante: Esto devuelve el objeto creado con el correlativo
+  .single()
 
-  // 4. Lógica TAM (Reembolsos)
+  if (compError) return { error: 'Error creando comprobante final' }
+
+  // 4. Lógica TAM
   const hoy = new Date().toISOString()
   const { data: relacionPromocion } = await supabase
     .from('promocion_productos')
@@ -183,51 +185,31 @@ export async function crearVentaComprobante(ventaData: any) {
   }
 
   revalidatePath('/dashboard/comprobantes')
-  return { success: true }
+  
+  // RETORNAMOS EL COMPROBANTE COMPLETO PARA EL FRONTEND
+  return { success: true, data: comprobante }
 }
-
-// app/dashboard/comprobantes/actions.ts
-
-// ... (tus imports y funciones anteriores siguen igual)
 
 export async function getHistorialComprobantes() {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    
     if(!user) return []
 
     const { data, error } = await supabase
         .from('ventas_comprobantes')
-        .select(`
-            *,
-            movimientos_inventario (
-                creado_en,          
-                precio_real_venta,
-                productos ( 
-                    nombre,
-                    precio_venta  
-                ),
-            
-                tam (
-                    monto_pendiente 
-                )
-            )
-        `) 
+        .select(`*, movimientos_inventario (creado_en, precio_real_venta, productos (nombre, precio_venta), tam (monto_pendiente))`) 
         .eq('usuario_id', user.id)
         .order('created_at', { ascending: false })
 
-    if (error) {
-        console.error("Error fetching historial:", error)
-        return []
-    }
-
+    if (error) return []
     return data || []
 }
 
-// --- ELIMINAR ---
 export async function eliminarVentaComprobante(id: string) {
     const supabase = await createClient()
-    const { data: comp } = await supabase.from('ventas_comprobantes').select('movimiento_id').eq('id', id).single()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    const { data: comp } = await supabase.from('ventas_comprobantes').select('movimiento_id').eq('id', id).eq('usuario_id', user.id).single()
     if(comp) {
         const { data: mov } = await supabase.from('movimientos_inventario').select('producto_id').eq('id', comp.movimiento_id).single()
         if(mov) {
@@ -239,63 +221,85 @@ export async function eliminarVentaComprobante(id: string) {
     revalidatePath('/dashboard/comprobantes')
 }
 
-export async function getHistorialFiltrado(filtro: string, fecha?: string, page: number = 1, limit: number = 10) {
+export async function getHistorialFiltrado(filtro: string, fecha?: string, page: number = 1, limit: number = 10, busqueda?: string) {
   const supabase = await createClient();
   
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { data: [], count: 0, error: 'No autenticado' };
+
   // Calcular rango de fechas
   const now = new Date();
   let startDate = new Date();
   let endDate = new Date();
 
-  // Ajustar zona horaria (opcional según tu config)
-  
+  startDate.setHours(0, 0, 0, 0);
+  endDate.setHours(23, 59, 59, 999);
+
   switch (filtro) {
-    case 'hoy':
-        startDate.setHours(0,0,0,0);
-        endDate.setHours(23,59,59,999);
-        break;
+    case 'hoy': break;
     case 'ayer':
         startDate.setDate(now.getDate() - 1);
-        startDate.setHours(0,0,0,0);
         endDate.setDate(now.getDate() - 1);
-        endDate.setHours(23,59,59,999);
         break;
     case '7dias':
         startDate.setDate(now.getDate() - 7);
+        endDate = new Date();
         break;
     case 'mes_actual':
         startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        endDate = new Date();
         break;
     case 'por_mes':
         if (fecha) {
-            // fecha viene como '2024-02'
             const [year, month] = fecha.split('-').map(Number);
             startDate = new Date(year, month - 1, 1);
-            endDate = new Date(year, month, 0, 23, 59, 59); // Último día del mes
+            endDate = new Date(year, month, 0, 23, 59, 59); 
         }
         break;
   }
 
-  // Consulta con paginación
+  // Consulta base
+  let query = supabase
+    .from('ventas_comprobantes')
+    .select('*, movimientos_inventario(*, productos(*), tam(*))', { count: 'exact' })
+    .eq('usuario_id', user.id);
+
+  // Filtro de Fechas
+  if (filtro !== 'todos') {
+      query = query
+        .gte('created_at', startDate.toISOString())
+        .lte('created_at', endDate.toISOString());
+  }
+
+  // --- LÓGICA DE BÚSQUEDA CORREGIDA ---
+  if (busqueda && busqueda.trim() !== '') {
+    const term = busqueda.trim();
+    
+    // Verificamos si el término es un número (para buscar por Correlativo)
+    const isNumber = /^\d+$/.test(term);
+
+    if (isNumber) {
+        // Si es número: Buscamos coincidencia exacta en correlativo O parcial en nombre
+        // Nota: Usamos .eq en correlativo porque es numérico
+        query = query.or(`cliente_nombre.ilike.%${term}%,correlativo.eq.${term}`);
+    } else {
+        // Si es texto: SOLO buscamos en nombre (si buscamos texto en columna numérica da error)
+        query = query.ilike('cliente_nombre', `%${term}%`);
+    }
+  }
+
+  // Paginación
   const from = (page - 1) * limit;
   const to = from + limit - 1;
 
-  let query = supabase
-    .from('ventas_comprobantes') // Tu tabla
-    .select('*, movimientos_inventario(*, productos(*), tam(*))', { count: 'exact' })
+  query = query
     .order('created_at', { ascending: false })
     .range(from, to);
-
-  // Aplicar filtro de fecha si no es histórico total
-  if (filtro !== 'todos') {
-      query = query.gte('created_at', startDate.toISOString())
-                   .lte('created_at', endDate.toISOString());
-  }
 
   const { data, error, count } = await query;
 
   if (error) {
-      console.error(error);
+      console.error("Error obteniendo historial:", error);
       return { data: [], count: 0, error: error.message };
   }
 

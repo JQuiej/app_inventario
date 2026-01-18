@@ -224,6 +224,10 @@ export const imprimirVoucher = async (datos: any, config: any) => {
         }
         
         if(datos.telefono) buffer.push(...encodeText('Tel: ' + datos.telefono), LF);
+        buffer.push(...drawLine()); 
+        buffer.push(...T_BOLD);
+        buffer.push(...encodeText('COMPROBANTE DE GARANTÍA'), LF);
+        buffer.push(...T_NO_BOLD);
         
         buffer.push(...drawLine()); 
 
@@ -249,7 +253,7 @@ export const imprimirVoucher = async (datos: any, config: any) => {
         buffer.push(...printProductWithPrice(datos.producto, textoPrecio));
 
         if(datos.imei) buffer.push(...encodeText(`IMEI: ${datos.imei}`), LF);
-        if(datos.imei) buffer.push(...encodeText(`ICC: ${datos.icc}`), LF);
+        if(datos.icc) buffer.push(...encodeText(`ICC: ${datos.icc}`), LF);
 
         const precioAct = parseFloat(datos.montoActivacion) || 0;
         if(datos.telefonoActivacion) {

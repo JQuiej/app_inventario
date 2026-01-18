@@ -97,6 +97,20 @@ export default function Sidebar({ userEmail, businessName, userRole }: SidebarPr
               </Link>
 
               <Link 
+                href="/dashboard/comprobantes" 
+                className={styles.navLink} 
+                onClick={() => handleLinkClick('/dashboard/comprobantes')}
+                style={pathname.includes('/dashboard/comprobantes') ? { backgroundColor: 'rgba(255,255,255,0.1)' } : {}}
+              >
+                {loadingPath === '/dashboard/comprobantes' ? (
+                  <Loader2 className="animate-spin" size={20} />
+                ) : (
+                  <Receipt size={20} />
+                )}
+                <span>Comprobantes</span>
+              </Link>
+
+              <Link 
                 href="/dashboard/tam" 
                 className={styles.navLink} 
                 onClick={() => handleLinkClick('/dashboard/tam')}

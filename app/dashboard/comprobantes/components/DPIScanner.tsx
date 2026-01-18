@@ -1,8 +1,7 @@
-// app/dashboard/comprobantes/components/DPIScanner.tsx
 'use client'
 import { useRef, useState, useEffect } from 'react'
-import { X, RefreshCw } from 'lucide-react'
-import { createWorker } from 'tesseract.js';
+import { X, RefreshCw, ScanEye } from 'lucide-react'
+import { createWorker, PSM } from 'tesseract.js';
 import { toast } from 'sonner';
 import { cropRegion } from '@/utils/imageProcessing';
 import styles from '../comprobantes.module.css'
@@ -12,23 +11,28 @@ interface Props {
     onClose: () => void;
 }
 
-// --- COORDENADAS AMPLIADAS ---
-// Hacemos las cajas más grandes para tolerar movimiento.
-// Luego filtraremos la "basura" extra por software.
-const REGIONS = {
-    cui: {  
+// === CORRECCIÓN DE ZONAS (LADO DERECHO DEL DPI) ===
+// El DPI tiene la foto a la izquierda (aprox 30-35% del ancho).
+// Los datos están del 35% en adelante.
+const ZONES = {
+    // Zona del CUI: Parte superior DERECHA
+    cui: { 
         x: 0.01,  y: 0.18, 
-        w: 0.45,  h: 0.25   // Cubre toda la zona izquierda superior
-    }, 
-    name: {  
+        w: 0.33,  h: 0.15,
+        label: "CUI", color: "rgba(59, 130, 246, 0.5)" // Azul
+    },
+    // Zona de Apellidos y Nombres: Debajo del CUI, lado DERECHO
+    names: { 
         x: 0.32,  y: 0.20, 
-        w: 0.60,  h: 0.50   // Cubre centro y derecha (Apellidos y Nombres)
+        w: 0.25,  h: 0.30 ,
+        label: "APELLIDOS Y NOMBRES", color: "rgba(34, 197, 94, 0.5)" // Verde
     }
 };
 
 export default function DPIScanner({ onDetected, onClose }: Props) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const [processing, setProcessing] = useState(false);
+    const [statusText, setStatusText] = useState("Alinee el DPI en el marco");
 
     useEffect(() => {
         let stream: MediaStream | null = null;
@@ -37,16 +41,14 @@ export default function DPIScanner({ onDetected, onClose }: Props) {
                 stream = await navigator.mediaDevices.getUserMedia({ 
                     video: { 
                         facingMode: 'environment',
-                        width: { ideal: 2560 }, // 2K para nitidez en letras pequeñas
-                        height: { ideal: 1440 },
+                        width: { ideal: 1920 }, 
+                        height: { ideal: 1080 },
                         focusMode: 'continuous'
                     } as any
                 });
-                if (videoRef.current) {
-                    videoRef.current.srcObject = stream;
-                }
+                if (videoRef.current) videoRef.current.srcObject = stream;
             } catch (err) {
-                toast.error("No se pudo acceder a la cámara.");
+                toast.error("Error al acceder a la cámara");
                 onClose();
             }
         };
@@ -58,131 +60,88 @@ export default function DPIScanner({ onDetected, onClose }: Props) {
         const video = videoRef.current;
         if (!video) return;
 
-        video.pause(); // Congelar imagen
+        video.pause();
         setProcessing(true);
+        setStatusText("Escaneando zonas...");
 
         try {
             const videoW = video.videoWidth;
             const videoH = video.videoHeight;
-            
-            // Frame lógico (Caja amarilla)
-            const frameW = videoW * 0.85; 
-            const frameH = frameW / 1.586; 
+            // Frame ratio 1.586 (Tarjeta ID estándar)
+            const frameW = videoW * 0.90; 
+            const frameH = frameW / 1.586;
             const frameX = (videoW - frameW) / 2;
             const frameY = (videoH - frameH) / 2;
 
-            // 1. Recortes (usando imageProcessing con filtros)
+            // Recortar ZONA CUI (Lado derecho superior)
             const imgCUI = cropRegion(
-                video, 
-                frameX + (frameW * REGIONS.cui.x),
-                frameY + (frameH * REGIONS.cui.y),
-                frameW * REGIONS.cui.w,
-                frameH * REGIONS.cui.h 
+                video,
+                frameX + (frameW * ZONES.cui.x),
+                frameY + (frameH * ZONES.cui.y),
+                frameW * ZONES.cui.w,
+                frameH * ZONES.cui.h
             );
 
-            const imgName = cropRegion(
-                video, 
-                frameX + (frameW * REGIONS.name.x),
-                frameY + (frameH * REGIONS.name.y),
-                frameW * REGIONS.name.w,
-                frameH * REGIONS.name.h
+            // Recortar ZONA NOMBRES (Lado derecho medio)
+            const imgNames = cropRegion(
+                video,
+                frameX + (frameW * ZONES.names.x),
+                frameY + (frameH * ZONES.names.y),
+                frameW * ZONES.names.w,
+                frameH * ZONES.names.h
             );
 
-            if (imgCUI && imgName) {
-                // Instanciar Tesseract
+            if (imgCUI && imgNames) {
                 const worker = await createWorker('spa');
                 
-                // --- A. PROCESAR CUI ---
-                // Limitamos a solo números para evitar leer letras como "O" o "I"
-                await worker.setParameters({ tessedit_char_whitelist: '0123456789' });
-                const { data: { text: rawTextCUI } } = await worker.recognize(imgCUI);
+                // 1. LEER CUI (Solo Números)
+                await worker.setParameters({
+                    tessedit_char_whitelist: '0123456789',
+                    tessedit_pageseg_mode: PSM.SINGLE_LINE
+                });
+                
+                const { data: { text: rawCUI } } = await worker.recognize(imgCUI);
+                const finalCUI = rawCUI.replace(/\D/g, ''); 
 
-                // --- B. PROCESAR NOMBRE ---
-                // Limitamos a letras mayúsculas y espacios
-                await worker.setParameters({ tessedit_char_whitelist: 'ABCDEFGHIJKLMNÑOPQRSTUVWXYZ ' });
-                const { data: { text: rawTextName } } = await worker.recognize(imgName);
+                if (finalCUI.length !== 13) {
+                    throw new Error("No se detectan 13 dígitos en la zona azul.");
+                }
 
+                // 2. LEER NOMBRES (Solo Mayúsculas)
+                await worker.setParameters({
+                    tessedit_char_whitelist: 'ABCDEFGHIJKLMNÑOPQRSTUVWXYZ ', 
+                    tessedit_pageseg_mode: PSM.SINGLE_BLOCK 
+                });
+
+                const { data: { text: rawNames } } = await worker.recognize(imgNames);
                 await worker.terminate();
 
-                // ==========================================
-                // LÓGICA DE VALIDACIÓN Y LIMPIEZA ROBUSTA
-                // ==========================================
+                // Limpieza de nombres
+                const lines = rawNames.split('\n')
+                    .map(l => l.trim())
+                    .filter(l => l.length > 2); // Eliminar ruido corto
 
-                // 1. Extracción Inteligente de CUI
-                // Buscamos un patrón de 13 dígitos seguidos, ignorando espacios o saltos de línea intermedios
-                // Ejemplo: "2450 88999 0101" -> "2450889990101"
-                const numbersOnly = rawTextCUI.replace(/\D/g, ''); 
-                // El CUI en Guatemala tiene 13 dígitos. 
-                // A veces OCR lee basura extra, así que buscamos la secuencia de 13 más probable.
-                let finalCUI = "";
-                
-                if (numbersOnly.length === 13) {
-                    finalCUI = numbersOnly;
-                } else if (numbersOnly.length > 13) {
-                    // Si hay más números, tomamos los primeros 13 que parezcan válidos (heuristicamente)
-                    // O simplemente cortamos
-                    finalCUI = numbersOnly.substring(0, 13); 
-                }
+                const finalName = lines.join(' ');
 
-                // 2. Extracción Inteligente de Nombre
-                const forbiddenWords = [
-                    'NOMBRE', 'NOMBRES', 'APELLIDO', 'APELLIDOS', 'DE', 'DEL',
-                    'IDENTIFICACION', 'PERSONAL', 'DOCUMENTO', 'DPI', 'CUI',
-                    'GUATEMALA', 'REPUBLICA', 'CENTROAMERICA', 'NACIONALIDAD',
-                    'FECHA', 'NACIMIENTO', 'VECINDAD', 'SEXO', 'MASCULINO', 'FEMENINO'
-                ];
-
-                const nameLines = rawTextName.split('\n')
-                    .map(line => line.trim().toUpperCase())
-                    .filter(line => {
-                        // Filtro 1: Longitud mínima de línea (evita basura como " . " o "Y")
-                        if (line.length < 3) return false;
-
-                        // Filtro 2: Eliminar palabras prohibidas exactas
-                        if (forbiddenWords.includes(line)) return false;
-
-                        // Filtro 3: Análisis léxico palabra por palabra
-                        const words = line.split(' ').filter(w => w.length > 1); // Ignorar letras solas
-                        if (words.length === 0) return false;
-
-                        // Si la línea contiene demasiadas palabras prohibidas, es basura
-                        const badWordsCount = words.filter(w => forbiddenWords.includes(w)).length;
-                        if (badWordsCount > 0) return false;
-
-                        return true;
-                    });
-
-                // Unimos las líneas limpias. 
-                // Normalmente en el DPI: Linea 1 = Apellidos, Linea 2 = Nombres
-                const finalName = nameLines.join(' ');
-
-                // ==========================================
-                // DECISIÓN FINAL
-                // ==========================================
-                
-                if (finalCUI.length === 13) {
-                    
-                    if (finalName.length > 4) {
-                        // ÉXITO TOTAL
-                        onDetected(finalCUI, finalName);
-                        toast.success("DPI escaneado exitosamente");
-                        onClose();
-                    } else {
-                        // ÉXITO PARCIAL (Solo CUI)
-                        // Es mejor devolver el CUI y dejar que escriban el nombre
-                        onDetected(finalCUI, "");
-                        toast.warning("CUI detectado. El nombre no era legible, ingréselo manualmente.");
-                        onClose();
-                    }
-
+                if (finalName.length < 4) {
+                    toast.warning("CUI detectado, pero nombre ilegible.");
+                    onDetected(finalCUI, "");
                 } else {
-                    toast.warning(`Lectura incompleta del CUI (${numbersOnly.length} dígitos encontrados). Intente mejorar la iluminación.`);
-                    video.play(); // Reintentar
+                    toast.success("DPI Escaneado Exitosamente");
+                    onDetected(finalCUI, finalName);
                 }
+                onClose();
             }
-        } catch (err) {
+
+        } catch (err: any) {
             console.error(err);
-            toast.error("Error procesando la imagen.");
+            // Mensaje de error amigable
+            const msg = err.message.includes("13 dígitos") 
+                ? "Alinee mejor el CUI en la caja AZUL" 
+                : "No se pudo leer. Intente mejorar la luz.";
+            
+            toast.error(msg);
+            setStatusText("Reintentar - Verifique iluminación");
             video.play();
         } finally {
             setProcessing(false);
@@ -192,51 +151,65 @@ export default function DPIScanner({ onDetected, onClose }: Props) {
     return (
         <div className={styles.scannerOverlay}>
             <div className={styles.scannerHeader}>
-                <span className="font-bold">Escanear DPI</span>
-                <button onClick={onClose}><X size={24} /></button>
+                <span className="font-bold flex items-center gap-2"><ScanEye/> Escáner DPI</span>
+                <button onClick={onClose} className="p-2 bg-gray-800 rounded-full"><X size={20} /></button>
             </div>
 
             <div className={styles.scannerView}>
-                <div style={{ position: 'relative', width: '100%', maxWidth: '500px', margin: '0 auto' }}>
+                <div className="relative w-full max-w-[600px] mx-auto bg-black rounded-xl overflow-hidden shadow-2xl">
                     <video 
                         ref={videoRef} 
                         autoPlay playsInline muted 
-                        className={styles.videoElement}
-                        style={{ borderRadius: '12px' }}
+                        className="w-full h-auto object-cover opacity-70"
                     />
 
-                    {/* MARCO GUÍA (Visualmente ajustado al DPI) */}
+                    {/* MARCO DE TARJETA (AMARILLO) */}
                     <div style={{
                         position: 'absolute',
                         top: '50%', left: '50%',
                         transform: 'translate(-50%, -50%)',
-                        width: '85%', 
+                        width: '90%', 
                         aspectRatio: '1.586', 
                         border: '2px solid #fbbf24', 
-                        borderRadius: '12px',
-                        boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.85)'
+                        borderRadius: '8px',
+                        boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.7)',
+                        zIndex: 10
                     }}>
-                        <div className="absolute -top-8 w-full text-center text-yellow-400 font-bold text-sm">
-                            ENCUADRE EL DPI COMPLETO
+                        <div className="absolute -top-8 w-full text-center text-yellow-400 font-bold text-xs tracking-wider">
+                            ENCUADRE TODA LA TARJETA
                         </div>
 
-                        {/* DEBUG: Áreas de búsqueda (Opcional: Quitar en producción si molesta) */}
+                        {/* ZONA CUI (AZUL - AHORA A LA DERECHA) */}
                         <div style={{
                             position: 'absolute',
-                            left: `${REGIONS.cui.x * 100}%`,
-                            top: `${REGIONS.cui.y * 100}%`,
-                            width: `${REGIONS.cui.w * 100}%`,
-                            height: `${REGIONS.cui.h * 100}%`,
-                            border: '1px dashed rgba(255, 50, 50, 0.3)',
-                        }} />
+                            left: `${ZONES.cui.x * 100}%`,
+                            top: `${ZONES.cui.y * 100}%`,
+                            width: `${ZONES.cui.w * 100}%`,
+                            height: `${ZONES.cui.h * 100}%`,
+                            border: '2px dashed #3b82f6',
+                            backgroundColor: ZONES.cui.color
+                        }}>
+                             <span className="absolute -top-5 right-0 text-[10px] text-blue-300 font-bold bg-black/60 px-2 rounded">CUI</span>
+                        </div>
+
+                        {/* ZONA NOMBRES (VERDE - AHORA A LA DERECHA) */}
                         <div style={{
                             position: 'absolute',
-                            left: `${REGIONS.name.x * 100}%`,
-                            top: `${REGIONS.name.y * 100}%`,
-                            width: `${REGIONS.name.w * 100}%`,
-                            height: `${REGIONS.name.h * 100}%`,
-                            border: '1px dashed rgba(59, 130, 246, 0.3)',
-                        }} />
+                            left: `${ZONES.names.x * 100}%`,
+                            top: `${ZONES.names.y * 100}%`,
+                            width: `${ZONES.names.w * 100}%`,
+                            height: `${ZONES.names.h * 100}%`,
+                            border: '2px dashed #22c55e',
+                            backgroundColor: ZONES.names.color
+                        }}>
+                            <span className="absolute bottom-1 right-1 text-[10px] text-green-300 font-bold bg-black/60 px-2 rounded">NOMBRES</span>
+                        </div>
+                    </div>
+                    
+                    <div className="absolute bottom-6 left-0 w-full text-center z-20 pointer-events-none">
+                         <span className="inline-block px-4 py-1 bg-black/80 text-white text-sm rounded-full border border-gray-600">
+                            {statusText}
+                         </span>
                     </div>
                 </div>
             </div>
@@ -245,9 +218,14 @@ export default function DPIScanner({ onDetected, onClose }: Props) {
                 <button 
                     onClick={captureAndProcess}
                     disabled={processing}
-                    className={styles.btnCapture}
+                    className="flex flex-col items-center gap-2 group"
                 >
-                    {processing ? <RefreshCw className="animate-spin text-white"/> : <div className={styles.btnCaptureInner}></div>}
+                    <div className={`w-16 h-16 rounded-full flex items-center justify-center border-4 shadow-lg transition-all ${
+                        processing ? 'bg-gray-700 border-gray-500' : 'bg-white border-blue-600 hover:scale-110'
+                    }`}>
+                        {processing ? <RefreshCw className="animate-spin text-white"/> : <div className="w-12 h-12 bg-blue-600 rounded-full border-2 border-white"></div>}
+                    </div>
+                    <span className="text-gray-300 text-xs font-medium">CAPTURAR</span>
                 </button>
             </div>
         </div>

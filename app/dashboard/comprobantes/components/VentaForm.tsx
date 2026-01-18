@@ -1,9 +1,10 @@
 // app/dashboard/comprobantes/components/VentaForm.tsx
 'use client'
-import { useState, useMemo } from 'react'
-import { Save, Camera, ScanBarcode } from 'lucide-react'
+import { useState, useMemo, useRef } from 'react'
+import { Save, Camera, ScanBarcode, ImagePlus, Loader2 } from 'lucide-react' // <--- Iconos nuevos
 import { toast } from 'sonner'
 import { crearVentaComprobante } from '../actions'
+import { extractDataFromScreenshot } from '@/utils/screenshotExtractor' // <--- Importamos el helper
 import styles from '../comprobantes.module.css'
 
 interface Props {
@@ -12,22 +13,56 @@ interface Props {
     onOpenBarcode: () => void;
     onOpenBarcodeIcc: () => void;
     onSuccess: (venta: any) => void; 
-    
-    // Estados levantados que el padre controla
     formData: any; 
     setFormData: (data: any) => void;
 }
 
-export default function VentaForm({ productos, onOpenDPI, onOpenBarcode,onOpenBarcodeIcc, onSuccess, formData, setFormData }: Props) {
+export default function VentaForm({ productos, onOpenDPI, onOpenBarcode, onOpenBarcodeIcc, onSuccess, formData, setFormData }: Props) {
     const [loading, setLoading] = useState(false);
+    
+    // --- ESTADOS NUEVOS PARA IMAGEN ---
+    const [processingImage, setProcessingImage] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     // --- ESTADOS PARA EL BUSCADOR ---
     const [busqueda, setBusqueda] = useState('');
     const [mostrarMenu, setMostrarMenu] = useState(false);
 
-    // Helper para actualizar campos individuales
     const update = (field: string, value: any) => {
         setFormData((prev: any) => ({ ...prev, [field]: value }));
+    };
+
+    // --- NUEVA LÓGICA DE CARGA DE IMAGEN ---
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setProcessingImage(true);
+        toast.info("Leyendo datos de la imagen...");
+
+        try {
+            const data = await extractDataFromScreenshot(file);
+            
+            if (data.error) {
+                toast.warning(data.error);
+            } else {
+                let count = 0;
+                setFormData((prev: any) => {
+                    const next = { ...prev };
+                    if (data.telefono) { next.telActivacion = data.telefono; count++; }
+                    if (data.dpi) { next.dpi = data.dpi; count++; }
+                    if (data.icc) { next.icc = data.icc; count++; }
+                    if (data.imei) { next.imei = data.imei; count++; }
+                    return next;
+                });
+                if(count > 0) toast.success(`Se extrajeron ${count} datos automáticamente.`);
+            }
+        } catch (error) {
+            toast.error("Error al procesar la imagen");
+        } finally {
+            setProcessingImage(false);
+            if (fileInputRef.current) fileInputRef.current.value = ''; // Limpiar input
+        }
     };
 
     // --- LÓGICA DE FILTRADO ---
@@ -38,22 +73,16 @@ export default function VentaForm({ productos, onOpenDPI, onOpenBarcode,onOpenBa
         );
     }, [productos, busqueda]);
 
-    // --- SELECCIÓN DE PRODUCTO ---
     const seleccionarProducto = (producto: any) => {
         update('productoId', producto.id);
         update('precio', producto.precio_venta);
-        
-        // Actualizamos el input visual y cerramos el menú
         setBusqueda(producto.nombre);
         setMostrarMenu(false);
     };
 
-    // --- CAMBIO EN EL INPUT DE BÚSQUEDA ---
     const handleBusquedaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setBusqueda(e.target.value);
         setMostrarMenu(true);
-        
-        // Si borra el texto, reseteamos el ID y precio
         if (e.target.value === '') {
              update('productoId', '');
              update('precio', '');
@@ -83,8 +112,6 @@ export default function VentaForm({ productos, onOpenDPI, onOpenBarcode,onOpenBa
         } else {
             const ventaCreada = (res as any).data || res; 
             onSuccess(ventaCreada);
-            
-            // Reset del formulario y del buscador
             setBusqueda('');
             setFormData({
                 productoId: '', precio: '', imei: '', icc: '', cliente: '', dpi: '', telActivacion: '', montoActivacion: ''
@@ -94,12 +121,37 @@ export default function VentaForm({ productos, onOpenDPI, onOpenBarcode,onOpenBa
     }
 
     return (
-        <div className={styles.card}>
+        <div className={styles.card} style={{position: 'relative'}}>
+            {/* Input Oculto */}
+            <input 
+                type="file" 
+                ref={fileInputRef} 
+                onChange={handleImageUpload} 
+                accept="image/*" 
+                style={{ display: 'none' }} 
+            />
+
+            {/* --- BOTÓN FLOTANTE PARA IMPORTAR --- */}
+            <button 
+                type="button" // Importante: type="button" para que no envíe el form al hacer clic
+                onClick={() => fileInputRef.current?.click()}
+                disabled={processingImage}
+                className={styles.btnFloating}
+                title="Importar captura de pantalla"
+            >
+                {/* Icono siempre visible */}
+                {processingImage ? <Loader2 className="animate-spin" size={18}/> : <ImagePlus size={18}/>}
+                
+                {/* Texto envuelto en span para ocultarlo en móvil */}
+                <span>
+                    {processingImage ? "Procesando..." : "Importar Datos"}
+                </span>
+            </button>
+
             {/* --- SECCIÓN 1: DISPOSITIVO --- */}
             <div className={styles.inputGroup}>
                 <div className={styles.sectionTitle}>1. Dispositivo</div>
                 
-                {/* --- BUSCADOR CON AUTOCOMPLETADO (Reemplaza al Select) --- */}
                 <div style={{ position: 'relative' }}>
                     <input 
                         type="text"
@@ -107,20 +159,13 @@ export default function VentaForm({ productos, onOpenDPI, onOpenBarcode,onOpenBa
                         onChange={handleBusquedaChange}
                         onFocus={() => setMostrarMenu(true)}
                         placeholder="-- Buscar o Escanear Dispositivo --"
-                        className={styles.select} // Reutilizamos tu estilo de select
+                        className={styles.select}
                         style={{ width: '100%', cursor: 'text' }}
                     />
 
-                    {/* Menú Desplegable */}
                     {mostrarMenu && (
                         <>
-                            {/* Backdrop invisible para cerrar al hacer clic afuera */}
-                            <div 
-                                style={{ position: 'fixed', inset: 0, zIndex: 40 }} 
-                                onClick={() => setMostrarMenu(false)}
-                            />
-                            
-                            {/* Lista de opciones */}
+                            <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setMostrarMenu(false)} />
                             <ul className={styles.dropdownMenu} style={{ 
                                 position: 'absolute', top: '100%', left: 0, width: '100%', 
                                 maxHeight: '250px', overflowY: 'auto', background: '#3b82f6', 
@@ -145,9 +190,7 @@ export default function VentaForm({ productos, onOpenDPI, onOpenBarcode,onOpenBa
                                         </li>
                                     ))
                                 ) : (
-                                    <li style={{ padding: '15px', color: '#999', textAlign:'center' }}>
-                                        No se encontraron productos
-                                    </li>
+                                    <li style={{ padding: '15px', color: '#999', textAlign:'center' }}>No se encontraron productos</li>
                                 )}
                             </ul>
                         </>
@@ -155,7 +198,6 @@ export default function VentaForm({ productos, onOpenDPI, onOpenBarcode,onOpenBa
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 mt-4">
-                    {/* Precio */}
                     <div>
                         <span className={styles.label}>Precio Total (Q):</span>
                         <input 
@@ -166,47 +208,37 @@ export default function VentaForm({ productos, onOpenDPI, onOpenBarcode,onOpenBa
                             style={{fontWeight:'bold', color:'#4ade80'}} 
                         />
                     </div>
-                    
-                    
                 </div>
-                {/* IMEI + Botón Scanner */}
-                    <div>
-                        <span className={styles.label}>IMEI:</span>
-                        <div className="flex gap-2">
-                            <input 
-                                value={formData.imei} 
-                                onChange={e => update('imei', e.target.value)} 
-                                className={styles.input} 
-                                placeholder="Escanee..." 
-                            />
-                            <button 
-                                onClick={onOpenBarcode} 
-                                className={styles.btnAction}
-                                title="Escanear Código de Barras"
-                            >
-                                <ScanBarcode size={16}/>
-                            </button>
-                        </div>
-                    </div>
 
-                    <div>
-                        <span className={styles.label}>ICC:</span>
-                        <div className="flex gap-2">
-                            <input 
-                                value={formData.icc} 
-                                onChange={e => update('icc', e.target.value)} 
-                                className={styles.input} 
-                                placeholder="Escanee..." 
-                            />
-                            <button 
-                                onClick={onOpenBarcodeIcc} 
-                                className={styles.btnAction}
-                                title="Escanear Código de Barras"
-                            >
-                                <ScanBarcode size={16}/>
-                            </button>
-                        </div>
+                <div>
+                    <span className={styles.label}>IMEI:</span>
+                    <div className="flex gap-2">
+                        <input 
+                            value={formData.imei} 
+                            onChange={e => update('imei', e.target.value)} 
+                            className={styles.input} 
+                            placeholder="Escanee..." 
+                        />
+                        <button onClick={onOpenBarcode} className={styles.btnAction} title="Escanear Código">
+                            <ScanBarcode size={16}/>
+                        </button>
                     </div>
+                </div>
+
+                <div>
+                    <span className={styles.label}>ICC:</span>
+                    <div className="flex gap-2">
+                        <input 
+                            value={formData.icc} 
+                            onChange={e => update('icc', e.target.value)} 
+                            className={styles.input} 
+                            placeholder="Escanee..." 
+                        />
+                        <button onClick={onOpenBarcodeIcc} className={styles.btnAction} title="Escanear Código">
+                            <ScanBarcode size={16}/>
+                        </button>
+                    </div>
+                </div>
             </div>
 
             {/* --- SECCIÓN 2: ACTIVACIÓN --- */}
@@ -262,11 +294,10 @@ export default function VentaForm({ productos, onOpenDPI, onOpenBarcode,onOpenBa
                 </div>
             </div>
 
-            {/* --- BOTÓN GENERAR --- */}
             <button 
                 onClick={handleSave} 
                 className={styles.btnPrimary} 
-                disabled={loading}
+                disabled={loading || processingImage}
             >
                 {loading ? (
                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mx-auto"/>

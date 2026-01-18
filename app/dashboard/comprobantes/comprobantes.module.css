@@ -713,3 +713,369 @@
 }
 .table tr:last-child td { border-bottom: none; }
 
+/* app/dashboard/comprobantes/comprobantes.module.css */
+
+.btnFloating {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  z-index: 10;
+  
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  
+  padding: 8px 12px;
+  background-color: #0f172a; /* indigo-50 */
+  color: #f8fafc; /* indigo-600 */
+  border: 1px solid #334155; /* indigo-200 */
+  border-radius: 8px;
+  
+  font-size: 0.75rem; /* text-xs */
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.btnFloating:hover {
+  background-color: #e0e7ff; /* indigo-100 */
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.btnFloating:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* --- VERSIÓN MÓVIL --- */
+/* Cuando la pantalla es pequeña (menos de 640px) */
+@media (max-width: 640px) {
+  .btnFloating {
+    top: 10px;
+    right: 10px;
+    padding: 8px; /* Cuadrado para solo icono */
+    gap: 0;
+  }
+
+  /* Ocultamos el texto dentro del span */
+  .btnFloating span {
+    display: none;
+  }
+}
+
+/* app/dashboard/comprobantes/comprobantes.module.css */
+
+/* --- ESTILOS DEL BUSCADOR DE PRODUCTOS --- */
+
+.searchContainer {
+  position: relative;
+  width: 100%;
+}
+
+/* El Input del Buscador */
+.searchInput {
+  width: 100%;
+  padding: 12px 16px;
+  padding-left: 40px; /* Espacio para el icono de lupa si decides ponerlo */
+  font-size: 0.95rem;
+  color: #1e293b;
+  background-color: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  outline: none;
+  transition: all 0.2s ease;
+  cursor: text;
+}
+
+.searchInput:focus {
+  background-color: #ffffff;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.searchInput::placeholder {
+  color: #94a3b8;
+}
+
+/* El Menú Desplegable (Dropdown) */
+.searchResultsMenu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  width: 100%;
+  max-height: 280px;
+  overflow-y: auto;
+  
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  z-index: 50;
+  
+  /* Animación suave de entrada */
+  animation: slideDown 0.15s ease-out;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Items de la lista */
+.resultItem {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f1f5f9;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background-color 0.15s;
+}
+
+.resultItem:last-child {
+  border-bottom: none;
+}
+
+.resultItem:hover {
+  background-color: #eff6ff; /* blue-50 */
+}
+
+.resultItemName {
+  font-weight: 600;
+  color: #334155;
+  font-size: 0.9rem;
+}
+
+.resultItemStock {
+  font-size: 0.75rem;
+  color: #64748b;
+  background-color: #f1f5f9;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-weight: 500;
+}
+
+/* Estado vacío */
+.emptyResult {
+  padding: 20px;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 0.9rem;
+}
+
+/* Backdrop invisible para cerrar al hacer click fuera */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  cursor: default;
+}
+/* app/dashboard/comprobantes/comprobantes.module.css */
+
+/* ... MANTÉN TUS ESTILOS DE ESCRITORIO ARRIBA ... */
+
+
+/* =========================================
+   VISTA MÓVIL OPTIMIZADA (< 768px)
+   ========================================= */
+
+@media (max-width: 768px) {
+  
+  /* 1. AJUSTE DEL CONTENEDOR PRINCIPAL 
+     Reducimos el padding para ganar espacio en pantallas pequeñas */
+  .container {
+    padding: 1rem 0.5rem; /* Menos relleno a los lados */
+    width: 100%;
+    overflow-x: hidden; /* Evitar desbordes generales */
+  }
+
+  /* 2. QUITAR EL ANCHO MÍNIMO DE LA TABLA (El culpable del scroll) */
+  .table {
+    min-width: 0 !important; /* Forzamos que no mida 600px */
+    width: 100% !important;
+    display: block; /* Se comporta como un bloque adaptable */
+  }
+
+  /* 3. LIMPIEZA DEL CONTENEDOR DE LA TABLA */
+  .tableContainer {
+    border: none; /* Quitamos borde externo para ganar limpieza */
+    background-color: transparent;
+    overflow-x: hidden; /* Aseguramos que no haya scroll */
+    padding: 0;
+  }
+
+  /* --- ESTILOS DE LISTA VERTICAL (Igual que antes pero ajustados al ancho) --- */
+
+  .table thead {
+    display: none;
+  }
+
+  .table tbody {
+    display: block;
+    width: 100%;
+  }
+
+  .table tr {
+    display: block;
+    width: 100%;
+    background-color: #1e293b; /* Fondo oscuro tarjeta */
+    border: 1px solid #334155;
+    border-radius: 12px; /* Bordes redondeados */
+    padding: 1rem;
+    margin-bottom: 1rem; /* Separación entre items */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Sombra suave */
+  }
+  
+  .table tr:last-child {
+    margin-bottom: 0;
+  }
+
+  .table td {
+    display: block;
+    width: 100%;
+    border: none;
+    padding: 2px 0;
+    text-align: left;
+    box-sizing: border-box; /* Asegura que el padding no rompa el ancho */
+  }
+
+  /* --- REGLAS POR COLUMNA --- */
+
+  /* Col 1: Correlativo -> ELIMINAR */
+  .table td:nth-child(1) {
+    display: none;
+  }
+
+  /* Col 2: Fecha -> Pequeña arriba */
+  .table td:nth-child(2) {
+    font-size: 0.7rem !important;
+    color: #94a3b8;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+  }
+
+  /* Col 3: Detalle -> Grande */
+  .table td:nth-child(3) {
+    font-size: 1rem !important;
+    color: #f1f5f9;
+    font-weight: 500;
+    margin-bottom: 6px;
+    /* Evitar que textos muy largos rompan el diseño */
+    white-space: normal; 
+    word-break: break-word;
+  }
+
+  /* Col 4: Total -> Resaltado */
+  .table td:nth-child(4) {
+    font-size: 1.2rem !important;
+    font-weight: 700 !important;
+    color: #4ade80 !important;
+    margin-bottom: 12px;
+    border-bottom: 1px solid #334155; /* Línea separadora antes de botones */
+    padding-bottom: 10px;
+  }
+
+  /* Col 5: Botones -> Distribuidos equitativamente */
+  .table td:nth-child(5) {
+    display: flex;
+    gap: 10px;
+    justify-content: space-between; /* Botones ocupan todo el ancho */
+    padding-top: 5px;
+  }
+
+  .table td:nth-child(5) .btnAction {
+    flex: 1; /* Cada botón crece para llenar espacio */
+    justify-content: center;
+    padding: 10px;
+    background-color: #334155;
+    height: 40px; /* Altura cómoda para el dedo */
+  }
+
+  .table tr:has(td[colspan="5"]) {
+    border: none;
+    box-shadow: none;
+    background: transparent;
+    text-align: center;
+  }
+
+  .table tr td[colspan="5"] {
+    display: block;
+    width: 100%;
+    text-align: center !important;
+    border: none;
+  }
+}
+
+/* app/dashboard/comprobantes/comprobantes.module.css */
+
+/* --- BARRA DE HERRAMIENTAS (TOOLBAR) --- */
+.toolbarContainer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  gap: 1rem;
+  flex-wrap: wrap; /* Importante para móvil */
+}
+
+.filterGroup {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* --- ESTILOS DEL BUSCADOR DE HISTORIAL --- */
+.searchBox {
+  position: relative;
+  flex: 1; /* Ocupa el espacio restante */
+  min-width: 200px; /* Ancho mínimo */
+  max-width: 400px;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #64748b;
+  pointer-events: none;
+}
+
+.searchInputHistory {
+  width: 100%;
+  background-color: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 10px 12px 10px 40px; /* Padding izquierdo para el icono */
+  color: #f8fafc;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.searchInputHistory:focus {
+  border-color: #3b82f6;
+}
+
+.searchInputHistory::placeholder {
+  color: #475569;
+}
+
+/* Ajuste móvil para la barra */
+@media (max-width: 640px) {
+  .toolbarContainer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .searchBox {
+    max-width: 100%; /* Buscador ancho completo en móvil */
+  }
+  
+  .filterGroup {
+    justify-content: space-between;
+  }
+}
