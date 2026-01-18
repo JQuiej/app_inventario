@@ -433,7 +433,7 @@ function PaymentModal({ campana, onSave }: { campana: any, onSave: () => void })
                     </div>
                     <div className={styles.formGroup}>
                         <label className={styles.label}>Notas / No. Referencia</label>
-                        <textarea className={styles.input} rows={2} placeholder="Cheque #123..."
+                        <textarea className={styles.input} rows={2} placeholder="desglose de pagos"
                             value={notas} onChange={e => setNotas(e.target.value)} disabled={isSubmitting}
                         />
                     </div>
