@@ -2,7 +2,7 @@
 import { useState, useEffect, useTransition } from 'react' // <--- Importamos useTransition
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, FolderTree, LogOut, Menu, X, ShoppingCart, Wrench, BarChart3, Loader2, Receipt } from 'lucide-react'
+import { LayoutDashboard, FolderTree, LogOut, Menu, X, ShoppingCart, Wrench, BarChart3, Loader2, Receipt, Ticket, FileText, ScrollText } from 'lucide-react'
 import styles from '@/app/dashboard/layout.module.css'
 import { logout } from '@/app/login/actions'
 
@@ -105,7 +105,7 @@ export default function Sidebar({ userEmail, businessName, userRole }: SidebarPr
                 {loadingPath === '/dashboard/comprobantes' ? (
                   <Loader2 className="animate-spin" size={20} />
                 ) : (
-                  <Receipt size={20} />
+                  <ScrollText size={20} />
                 )}
                 <span>Comprobantes</span>
               </Link>

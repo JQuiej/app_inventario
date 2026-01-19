@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { Printer } from 'lucide-react'
+import { Printer, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 // --- COMPONENTES IMPORTADOS ---
@@ -27,6 +27,10 @@ export default function ComprobantesPage() {
   const [config, setConfig] = useState<any>(null)
   const [historial, setHistorial] = useState<any[]>([])
   const [previewItem, setPreviewItem] = useState<any>(null)
+
+  const [showPrintModal, setShowPrintModal] = useState(false);
+  const [itemToPrint, setItemToPrint] = useState<any>(null);
+  const [isPrinting, setIsPrinting] = useState(false);
 
   // 2. Estado del Formulario de Venta
   const initialFormState = {
@@ -57,35 +61,67 @@ export default function ComprobantesPage() {
   // --- MANEJADORES (HANDLERS) QUE PASAREMOS A LOS HIJOS ---
 
   // A. Impresión: Se pasa a HistorialVentas y se usa internamente
-  const handlePrint = async (item: any) => {
+const handlePrint = (item: any) => {
     if(!config) return toast.error("Falta configuración del negocio");
-    
-    // Preparar objeto de datos seguro
-    const datos = {
-        logoUrl: config.logo_url,
-        negocio: config.nombre_negocio,
-        direccion: config.direccion,
-        telefono: config.telefono,
-        garantia: config.mensaje_garantia,
-        fecha: new Date(item.created_at).toLocaleDateString('es-GT'),
-        correlativo: item.correlativo || '---',
-        cliente: item.cliente_nombre || 'Consumidor Final',
-        dpi: item.cliente_dpi || '',
-        producto: item.movimientos_inventario?.productos?.nombre || 'Producto',
-        precioDispositivo: parseFloat(item.movimientos_inventario?.precio_real_venta || 0),
-        descuento: item.movimientos_inventario?.tam?.[0]?.monto_pendiente 
-                   ? parseFloat(item.movimientos_inventario.tam[0].monto_pendiente) 
-                   : 0,
-        imei: item.imei_dispositivo,
-        icc: item.icc,
-        telefonoActivacion: item.telefono_activacion,
-        montoActivacion: parseFloat(item.monto_activacion || 0)
-    };
-    
-    toast.info("Enviando a impresora...");
-    const res = await imprimirVoucher(datos, config);
-    if(res.error) toast.error("Error: " + res.error);
-    else toast.success("Impresión enviada");
+    setItemToPrint(item);
+    setShowPrintModal(true); // Abre el modal
+  }
+
+  const confirmarImpresion = async (tamano: '58mm' | '80mm') => {
+    // Cerramos modal y mostramos loader
+    setShowPrintModal(false);
+    setIsPrinting(true);
+
+    try {
+        const item = itemToPrint; // El item que guardamos antes
+
+        // Preparamos los datos (Misma lógica que tenías)
+        const datos = {
+            logoUrl: config.logo_url,
+            negocio: config.nombre_negocio,
+            direccion: config.direccion,
+            telefono: config.telefono,
+            garantia: config.mensaje_garantia,
+            fecha: new Date(item.created_at).toLocaleDateString('es-GT'),
+            correlativo: item.correlativo || '---',
+            cliente: item.cliente_nombre || 'Consumidor Final',
+            dpi: item.cliente_dpi || '',
+            producto: item.movimientos_inventario?.productos?.nombre || 'Producto',
+            precioDispositivo: parseFloat(item.movimientos_inventario?.precio_real_venta || 0),
+            descuento: item.movimientos_inventario?.tam?.[0]?.monto_pendiente 
+                    ? parseFloat(item.movimientos_inventario.tam[0].monto_pendiente) 
+                    : 0,
+            imei: item.imei_dispositivo,
+            icc: item.icc,
+            telefonoActivacion: item.telefono_activacion,
+            montoActivacion: parseFloat(item.monto_activacion || 0),
+            // Calculamos el total aquí para enviarlo ya listo
+            total: (parseFloat(item.movimientos_inventario?.precio_real_venta || 0) + 
+                    parseFloat(item.monto_activacion || 0) - 
+                    (item.movimientos_inventario?.tam?.[0]?.monto_pendiente ? parseFloat(item.movimientos_inventario.tam[0].monto_pendiente) : 0))
+        };
+
+        // Definimos el ancho según la elección del usuario
+        const anchoPapel = tamano === '58mm' ? 32 : 48;
+
+        toast.info("Conectando a impresora...");
+        
+        // Llamamos a la función printer.ts actualizada
+        const res = await imprimirVoucher(datos, anchoPapel);
+
+        if(res.error) {
+            toast.error("Error: " + res.error);
+        } else {
+            toast.success("Impresión enviada correctamente");
+        }
+
+    } catch (error) {
+        toast.error("Error inesperado al imprimir");
+        console.error(error);
+    } finally {
+        setIsPrinting(false);
+        setItemToPrint(null);
+    }
   }
 
   // B. Guardado de Configuración: Se pasa a ConfigForm
@@ -191,8 +227,65 @@ export default function ComprobantesPage() {
             <TicketPreview 
                 item={previewItem} 
                 config={config} 
-                onClose={() => setPreviewItem(null)} 
+                onClose={() => setPreviewItem(null)}
+                onPrint={() => handlePrint(previewItem)} 
             />
+        )}
+
+        {showPrintModal && (
+            <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in duration-200">
+                    <div className="p-6 text-center">
+                        <div className="mx-auto bg-blue-100 w-12 h-12 rounded-full flex items-center justify-center mb-4">
+                            <Printer className="text-blue-600" size={24} />
+                        </div>
+                        <h3 className="text-lg font-bold text-gray-900 mb-2">Seleccione su Impresora</h3>
+                        <p className="text-sm text-gray-500 mb-6">
+                            Elige el tamaño del papel para asegurar que el ticket salga perfecto.
+                        </p>
+
+                        <div className="grid gap-3">
+                            <button
+                                onClick={() => confirmarImpresion('58mm')}
+                                className="flex items-center justify-center gap-3 w-full py-3 px-4 bg-white border-2 border-gray-200 hover:border-blue-500 hover:bg-blue-50 rounded-lg transition-all group"
+                            >
+                                <span className="text-2xl">📄</span>
+                                <div className="text-left">
+                                    <div className="font-semibold text-gray-900 group-hover:text-blue-700">Pequeña (58mm)</div>
+                                    <div className="text-xs text-gray-400">Estándar portátil</div>
+                                </div>
+                            </button>
+
+                            <button
+                                onClick={() => confirmarImpresion('80mm')}
+                                className="flex items-center justify-center gap-3 w-full py-3 px-4 bg-white border-2 border-gray-200 hover:border-blue-500 hover:bg-blue-50 rounded-lg transition-all group"
+                            >
+                                <span className="text-2xl">📃</span>
+                                <div className="text-left">
+                                    <div className="font-semibold text-gray-900 group-hover:text-blue-700">Grande (80mm)</div>
+                                    <div className="text-xs text-gray-400">Impresora de escritorio</div>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                    <div className="bg-gray-50 p-4 border-t border-gray-100">
+                        <button 
+                            onClick={() => setShowPrintModal(false)}
+                            className="w-full py-2 text-sm font-medium text-gray-600 hover:text-gray-800"
+                        >
+                            Cancelar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
+
+        {/* --- INDICADOR DE CARGA GLOBAL --- */}
+        {isPrinting && (
+            <div className="fixed inset-0 z-[70] flex flex-col items-center justify-center bg-black/50 text-white">
+                <Loader2 className="animate-spin mb-4" size={48} />
+                <p className="font-semibold">Imprimiendo...</p>
+            </div>
         )}
 
         {/* --- SCANNERS --- */}

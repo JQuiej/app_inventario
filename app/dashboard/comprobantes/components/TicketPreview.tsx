@@ -7,9 +7,11 @@ interface Props {
     item: any;
     config: any;
     onClose: () => void;
+    onPrint?: () => void; // <--- 1. CAMBIO: Añadí '?' para hacerlo opcional
 }
 
-export default function TicketPreview({ item, config, onClose }: Props) {
+// 2. CAMBIO: Agregué 'onPrint' aquí abajo para poder usarlo
+export default function TicketPreview({ item, config, onClose, onPrint }: Props) {
     if (!item) return null;
 
     const activacion = parseFloat(item.monto_activacion || 0);
@@ -39,7 +41,7 @@ export default function TicketPreview({ item, config, onClose }: Props) {
             telefono: config.telefono,
             garantia: config.mensaje_garantia,
             fecha: fecha.split(',')[0],
-            correlativo: item.correlativo || '---', // PROTECCIÓN AQUÍ
+            correlativo: item.correlativo || '---',
             cliente: item.cliente_nombre,
             dpi: item.cliente_dpi,
             producto: item.movimientos_inventario?.productos?.nombre || 'Producto',
@@ -48,11 +50,14 @@ export default function TicketPreview({ item, config, onClose }: Props) {
             imei: item.imei_dispositivo,
             icc: item.icc,
             telefonoActivacion: item.telefono_activacion,
-            montoActivacion: activacion
+            montoActivacion: activacion,
+            total: totalVenta // Aseguramos enviar el total calculado
         };
 
+        // NOTA: Aquí se usa un ancho por defecto si se imprime desde local (fallback)
+        // Idealmente siempre usarás onPrint del padre.
         toast.info("Enviando a impresora...");
-        const res = await imprimirVoucher(datosParaImprimir, config);
+        const res = await imprimirVoucher(datosParaImprimir, 48); // Asume 80mm por defecto en fallback
         if (res.error) toast.error("Error: " + res.error);
         else toast.success("Imprimiendo...");
     };
@@ -117,7 +122,15 @@ export default function TicketPreview({ item, config, onClose }: Props) {
 
                 <div className="p-4 border-t bg-gray-50 flex gap-3 justify-end">
                     <button onClick={onClose} className="px-4 py-2 text-sm font-semibold text-gray-600 hover:text-gray-800">Cerrar</button>
-                    <button onClick={handlePrintHere} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md flex items-center gap-2 shadow-sm"><Printer size={18} /> Imprimir Ahora</button>
+                    <button 
+                        onClick={() => {
+                            if (onPrint) onPrint(); // Ahora sí funciona porque onPrint existe en el scope
+                            else handlePrintHere();
+                        }} 
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md flex items-center gap-2 shadow-sm"
+                    > 
+                        <Printer size={18} /> Imprimir Ahora
+                    </button>
                 </div>
             </div>
         </div>

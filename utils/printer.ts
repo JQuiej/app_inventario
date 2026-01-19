@@ -3,32 +3,24 @@
 // --- COMANDOS ESC/POS ---
 const ESC = 0x1B;
 const GS = 0x1D;
+const LF = 0x0A; 
+
+// FORMATO DE TEXTO
+const SET_PC437 = [ESC, 0x74, 0x00]; 
+const T_NORMAL = [ESC, 0x21, 0x00]; 
+const T_BOLD = [ESC, 0x45, 0x01];
+const T_NO_BOLD = [ESC, 0x45, 0x00];
+const T_DOUBLE_H = [ESC, 0x21, 0x10];
 
 // ALINEACIÓN
 const A_LEFT = [ESC, 0x61, 0x00];
 const A_CENTER = [ESC, 0x61, 0x01];
 const A_RIGHT = [ESC, 0x61, 0x02];
 
-// ESTILOS
-const T_NORMAL = [ESC, 0x21, 0x00]; 
-const T_BOLD = [ESC, 0x45, 0x01];
-const T_NO_BOLD = [ESC, 0x45, 0x00];
-const T_DOUBLE_H = [ESC, 0x21, 0x10];
-const T_DOUBLE_W = [ESC, 0x21, 0x20];
-
-// MODO INVERSO (Fondo Negro / Letra Blanca)
-const INVERSE_ON = [GS, 0x42, 0x01];  
-const INVERSE_OFF = [GS, 0x42, 0x00]; 
-
-// CODE PAGE (Forzar PC437)
-const SET_PC437 = [ESC, 0x74, 0x00]; 
-
 const CUT_PAPER = [GS, 0x56, 0x41, 0x03]; 
-const LF = 0x0A; 
 
-const WIDTH = 32;
+// --- UTILIDADES ---
 
-// --- 1. CODIFICACIÓN ---
 function encodeText(text: string): number[] {
     const replacements: { [key: string]: string } = {
         'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u',
@@ -36,7 +28,6 @@ function encodeText(text: string): number[] {
         'ñ': 'n', 'Ñ': 'N', 'ü': 'u', 'Ü': 'U'
     };
     const cleanText = text.replace(/[áéíóúÁÉÍÓÚñÑüÜ]/g, char => replacements[char] || char);
-
     const bytes: number[] = [];
     for (let i = 0; i < cleanText.length; i++) {
         let code = cleanText.charCodeAt(i);
@@ -46,59 +37,47 @@ function encodeText(text: string): number[] {
     return bytes;
 }
 
-// --- 2. UTILIDADES DE DISEÑO ---
+// 1. DIBUJAR LÍNEA (Dinámica según ancho)
+function drawLine(width: number) {
+    const line = '-'.repeat(width);
+    return [...encodeText(line), LF];
+}
 
-// NUEVA FUNCIÓN: Word Wrap Genérico (Para Direcciones y Garantías)
-// Divide el texto en líneas sin cortar palabras
-function getWrappedBytes(text: string): number[] {
+// 2. TEXTO JUSTIFICADO (Dinámico)
+function padPair(left: string, right: string, width: number) {
+    const space = width - (left.length + right.length);
+    if (space < 1) {
+        // Si no cabe, imprime en dos líneas
+        return [
+            ...encodeText(left), LF, 
+            ...A_RIGHT, ...encodeText(right), LF, ...A_LEFT 
+        ];
+    }
+    const line = left + ' '.repeat(space) + right;
+    return [...encodeText(line), LF];
+}
+
+// 3. WORD WRAP (Dinámico)
+function getWrappedBytes(text: string, width: number): number[] {
     const buffer: number[] = [];
     const cleanText = text.replace(/[áéíóúñ]/gi, (c) => ({'á':'a','é':'e','í':'i','ó':'o','ú':'u','ñ':'n'}[c.toLowerCase()] || c));
     const words = cleanText.split(' ');
     let currentLine = '';
 
     words.forEach(word => {
-        // Si la palabra cabe en la línea actual (+ espacio), la agregamos
-        // WIDTH - 1 para dejar margen de seguridad
-        if ((currentLine + word).length < WIDTH) {
+        if ((currentLine + word).length < width) {
             currentLine += (currentLine ? ' ' : '') + word;
         } else {
-            // Si no cabe, imprimimos la línea actual y empezamos una nueva con la palabra
-            if (currentLine) {
-                buffer.push(...encodeText(currentLine), LF);
-            }
+            if (currentLine) buffer.push(...encodeText(currentLine), LF);
             currentLine = word;
         }
     });
-    // Imprimir lo que sobró en la última línea
-    if (currentLine) {
-        buffer.push(...encodeText(currentLine), LF);
-    }
-    
+    if (currentLine) buffer.push(...encodeText(currentLine), LF);
     return buffer;
 }
 
-function padPair(left: string, right: string) {
-    const lenL = left.length;
-    const lenR = right.length;
-    let space = WIDTH - (lenL + lenR);
-    if (space < 1) space = 1; 
-    const line = left + ' '.repeat(space) + right;
-    return [...encodeText(line), LF];
-}
-
-// BARRA SÓLIDA (MODO INVERSO)
-function drawLine() {
-    const cmd: number[] = [];
-    cmd.push(...T_NORMAL); 
-    cmd.push(...INVERSE_ON);
-    for(let i=0; i<WIDTH; i++) cmd.push(0x20);
-    cmd.push(...INVERSE_OFF);
-    cmd.push(LF);
-    return cmd;
-}
-
 // Word Wrap específico para Producto + Precio
-function printProductWithPrice(name: string, priceStr: string) {
+function printProductWithPrice(name: string, priceStr: string, width: number) {
     const buffer: number[] = [];
     const cleanName = name.replace(/[áéíóúñ]/gi, (c) => ({'á':'a','é':'e','í':'i','ó':'o','ú':'u','ñ':'n'}[c.toLowerCase()] || c));
     const words = cleanName.split(' ');
@@ -106,7 +85,7 @@ function printProductWithPrice(name: string, priceStr: string) {
     const lines: string[] = [];
 
     words.forEach(word => {
-        if ((currentLine + word).length < WIDTH) {
+        if ((currentLine + word).length < width) {
             currentLine += (currentLine ? ' ' : '') + word;
         } else {
             lines.push(currentLine);
@@ -120,11 +99,11 @@ function printProductWithPrice(name: string, priceStr: string) {
         const isLastLine = (i === lines.length - 1);
 
         if (isLastLine) {
-            if ((lineText.length + priceStr.length + 1) <= WIDTH) {
-                buffer.push(...padPair(lineText, priceStr));
+            if ((lineText.length + priceStr.length + 1) <= width) {
+                buffer.push(...padPair(lineText, priceStr, width));
             } else {
                 buffer.push(...encodeText(lineText), LF);
-                buffer.push(...padPair('', priceStr));
+                buffer.push(...padPair('', priceStr, width));
             }
         } else {
             buffer.push(...encodeText(lineText), LF);
@@ -133,7 +112,6 @@ function printProductWithPrice(name: string, priceStr: string) {
     return buffer;
 }
 
-// --- 3. IMAGEN ---
 async function getLogoBytes(imageUrl: string): Promise<Uint8Array | null> {
     return new Promise(async (resolve) => {
         try {
@@ -145,6 +123,7 @@ async function getLogoBytes(imageUrl: string): Promise<Uint8Array | null> {
             img.onload = () => {
                 URL.revokeObjectURL(objectURL);
                 const canvas = document.createElement('canvas');
+                // IMPORTANTE: 384px es seguro para 58mm. 
                 const MAX_WIDTH = 384; 
                 const scale = MAX_WIDTH / img.width;
                 const width = MAX_WIDTH;
@@ -180,20 +159,23 @@ async function getLogoBytes(imageUrl: string): Promise<Uint8Array | null> {
     });
 }
 
-// --- 4. ENVÍO ---
 async function sendDataInChunks(characteristic: any, data: Uint8Array) {
-    const CHUNK_SIZE = 100; 
+    const CHUNK_SIZE = 50; 
     for (let i = 0; i < data.byteLength; i += CHUNK_SIZE) {
         const chunk = data.slice(i, i + CHUNK_SIZE);
         await characteristic.writeValue(chunk);
-        await new Promise(resolve => setTimeout(resolve, 25)); 
+        await new Promise(resolve => setTimeout(resolve, 30)); 
     }
 }
 
-// --- MAIN ---
-export const imprimirVoucher = async (datos: any, config: any) => {
+// --- MAIN (ACTUALIZADO: Recibe anchoPapel) ---
+export const imprimirVoucher = async (datos: any, anchoPapel: number) => {
     let device: any = null;
     try {
+        if (!(navigator as any).bluetooth) {
+            throw new Error('Bluetooth no disponible. Use Chrome en Android/PC.');
+        }
+        
         device = await (navigator as any).bluetooth.requestDevice({
             acceptAllDevices: true,
             optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb']
@@ -210,47 +192,47 @@ export const imprimirVoucher = async (datos: any, config: any) => {
 
         // 1. LOGO
         if(datos.logoUrl) {
-            buffer.push(...A_CENTER);
-            await sendDataInChunks(characteristic, new Uint8Array(buffer));
-            buffer = []; 
             const logoBytes = await getLogoBytes(datos.logoUrl);
-            if(logoBytes) await sendDataInChunks(characteristic, logoBytes);
+            if(logoBytes) {
+                buffer.push(...A_CENTER);
+                await sendDataInChunks(characteristic, new Uint8Array([...buffer, ...Array.from(logoBytes)]));
+                buffer = []; 
+            }
         }
 
-        // --- DIRECCIÓN CORREGIDA (WORD WRAP) ---
+        // --- CUERPO DEL TICKET (Todo usa anchoPapel) ---
+        buffer.push(...A_CENTER);
         if(datos.direccion) {
-            // Usamos la nueva función para que no corte palabras
-            buffer.push(...getWrappedBytes(datos.direccion));
+            buffer.push(...getWrappedBytes(datos.direccion, anchoPapel));
         }
         
         if(datos.telefono) buffer.push(...encodeText('Tel: ' + datos.telefono), LF);
-        buffer.push(...drawLine()); 
+        buffer.push(...drawLine(anchoPapel)); 
         buffer.push(...T_BOLD);
-        buffer.push(...encodeText('COMPROBANTE DE GARANTÍA'), LF);
+        buffer.push(...encodeText('COMPROBANTE DE GARANTIA'), LF); // Sin tilde para compatibilidad
         buffer.push(...T_NO_BOLD);
         
-        buffer.push(...drawLine()); 
+        buffer.push(...drawLine(anchoPapel)); 
 
-        buffer.push(...padPair('Fecha:', datos.fecha));
-        buffer.push(...padPair('Correlativo:', `${datos.correlativo || '---'}`));
-        
-        buffer.push(...drawLine()); 
         buffer.push(...A_LEFT);
-        buffer.push(...padPair('Datos Cliente:', ' '));
-        buffer.push(...getWrappedBytes(datos.cliente));
-        buffer.push(...getWrappedBytes('No. DPI:' + datos.dpi));
+        buffer.push(...padPair('Fecha:', datos.fecha, anchoPapel));
+        buffer.push(...padPair('Correlativo:', `${datos.correlativo || '---'}`, anchoPapel));
         
-        buffer.push(...drawLine()); 
-
-       
+        buffer.push(...drawLine(anchoPapel)); 
+        buffer.push(...padPair('Cliente:', ' ', anchoPapel));
+        buffer.push(...getWrappedBytes(datos.cliente, anchoPapel));
+        buffer.push(...getWrappedBytes('DPI: ' + datos.dpi, anchoPapel));
+        
+        buffer.push(...drawLine(anchoPapel)); 
 
         buffer.push(...T_BOLD);
-        buffer.push(...padPair('Producto', 'Cantidad'));
+        buffer.push(...padPair('Producto', 'Total', anchoPapel));
         buffer.push(...T_NO_BOLD);
         
         const precioDisp = parseFloat(datos.precioDispositivo) || 0;
         const textoPrecio = `Q${precioDisp.toFixed(2)}`;
-        buffer.push(...printProductWithPrice(datos.producto, textoPrecio));
+        // Usamos la nueva función con anchoPapel
+        buffer.push(...printProductWithPrice(datos.producto, textoPrecio, anchoPapel));
 
         if(datos.imei) buffer.push(...encodeText(`IMEI: ${datos.imei}`), LF);
         if(datos.icc) buffer.push(...encodeText(`ICC: ${datos.icc}`), LF);
@@ -258,31 +240,30 @@ export const imprimirVoucher = async (datos: any, config: any) => {
         const precioAct = parseFloat(datos.montoActivacion) || 0;
         if(datos.telefonoActivacion) {
             buffer.push(...encodeText(`Tel: ${datos.telefonoActivacion}`), LF);
-            buffer.push(...padPair('Monto Recarga', `Q${precioAct.toFixed(2)}`));
+            buffer.push(...padPair('Monto Recarga', `Q${precioAct.toFixed(2)}`, anchoPapel));
         }
 
-        buffer.push(...drawLine()); 
+        buffer.push(...drawLine(anchoPapel)); 
 
         const montoDescuento = parseFloat(datos.descuento) || 0;
         if (montoDescuento > 0) {
             buffer.push(...T_BOLD);
-            buffer.push(...padPair('DESCUENTO', `-Q${montoDescuento.toFixed(2)}`));
+            buffer.push(...padPair('DESCUENTO', `-Q${montoDescuento.toFixed(2)}`, anchoPapel));
             buffer.push(...T_NO_BOLD);
-            buffer.push(...drawLine()); 
+            buffer.push(...drawLine(anchoPapel)); 
         } 
 
-        const granTotal = precioDisp + precioAct - montoDescuento; 
+        const granTotal = parseFloat(datos.total);
         
         buffer.push(...T_DOUBLE_H, ...T_BOLD);
-        buffer.push(...padPair('Total', `Q${granTotal.toFixed(2)}`));
+        buffer.push(...padPair('TOTAL', `Q${granTotal.toFixed(2)}`, anchoPapel));
         buffer.push(...T_NORMAL);
 
-        buffer.push(...drawLine()); 
+        buffer.push(...drawLine(anchoPapel)); 
 
         buffer.push(...A_CENTER);
         if(datos.garantia) {
-            // Reutilizamos la función de Word Wrap para la garantía también
-            buffer.push(...getWrappedBytes(datos.garantia));
+            buffer.push(...getWrappedBytes(datos.garantia, anchoPapel));
         } else {
             buffer.push(...encodeText('Gracias por su compra'), LF);
         }
@@ -293,7 +274,7 @@ export const imprimirVoucher = async (datos: any, config: any) => {
         const finalBuffer = new Uint8Array(buffer);
         await sendDataInChunks(characteristic, finalBuffer);
 
-        setTimeout(() => { if (device && device.gatt.connected) device.gatt.disconnect(); }, 500);
+        setTimeout(() => { if (device && device.gatt.connected) device.gatt.disconnect(); }, 1500);
         return { success: true };
 
     } catch (error: any) {
