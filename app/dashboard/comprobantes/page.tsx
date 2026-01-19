@@ -240,19 +240,14 @@ const handlePrint = (item: any) => {
                             <Printer className="text-blue-600" size={24} />
                         </div>
                         <h3 className="text-lg font-bold text-gray-900 mb-2">Seleccione su Impresora</h3>
-                        <p className="text-sm text-gray-500 mb-6">
-                            Elige el tamaño del papel para asegurar que el ticket salga perfecto.
-                        </p>
 
                         <div className="grid gap-3">
                             <button
                                 onClick={() => confirmarImpresion('58mm')}
                                 className="flex items-center justify-center gap-3 w-full py-3 px-4 bg-white border-2 border-gray-200 hover:border-blue-500 hover:bg-blue-50 rounded-lg transition-all group"
                             >
-                                <span className="text-2xl">📄</span>
                                 <div className="text-left">
                                     <div className="font-semibold text-gray-900 group-hover:text-blue-700">Pequeña (58mm)</div>
-                                    <div className="text-xs text-gray-400">Estándar portátil</div>
                                 </div>
                             </button>
 
@@ -260,10 +255,8 @@ const handlePrint = (item: any) => {
                                 onClick={() => confirmarImpresion('80mm')}
                                 className="flex items-center justify-center gap-3 w-full py-3 px-4 bg-white border-2 border-gray-200 hover:border-blue-500 hover:bg-blue-50 rounded-lg transition-all group"
                             >
-                                <span className="text-2xl">📃</span>
                                 <div className="text-left">
                                     <div className="font-semibold text-gray-900 group-hover:text-blue-700">Grande (80mm)</div>
-                                    <div className="text-xs text-gray-400">Impresora de escritorio</div>
                                 </div>
                             </button>
                         </div>

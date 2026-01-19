@@ -23,7 +23,7 @@ export default function MiPantallaDeVenta({ datosVenta }: { datosVenta: any }) {
     setPrinting(false);
 
     if (resultado.error) {
-      alert("Error: " + resultado.error + "\n\nTip: Si tienes varias impresoras iguales, apaga la que no uses o desenparéjala en la configuración de Bluetooth del teléfono.");
+      alert("Error: " + resultado.error);
     } else {
       alert("Impresión enviada correctamente");
     }
