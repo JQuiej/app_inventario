@@ -61,7 +61,7 @@ export const extractDataFromScreenshot = async (imageFile: File): Promise<Extrac
         const results: ExtractedData = {};
 
         // 1. TELÉFONO
-        const phoneRegex = /(?:ASIGNADO|TELEFONO|NÚMERO|NUMERO)[\s\S]{0,25}?(\d[\d\s]{6,12})(?!\d)/i;
+        const phoneRegex = /(?:ASIGNADO|TELEFONO|NÚMERO|NUMERO|LÍNEA|TIGO)[\s\S]{0,25}?(\d[\d\s]{6,12})(?!\d)/i;
         const phoneMatch = text.match(phoneRegex);
         if (phoneMatch) {
             const clean = cleanOCRNumber(phoneMatch[1]);
