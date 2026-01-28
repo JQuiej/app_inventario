@@ -65,6 +65,19 @@ export default function EditProductModal({
               />
             </div>
 
+            {/* --- NUEVO CAMPO: STOCK ACTUAL --- */}
+            <div className={styles.formGroup}>
+              <label className={styles.label}>Stock Actual</label>
+              <input 
+                name="stock_actual" 
+                type="number" 
+                className={styles.input} 
+                defaultValue={producto.stock_actual} 
+                required 
+                disabled={isPending}
+              />
+            </div>
+
             <div className={styles.formGroup}>
               <label className={styles.label}>Precio Venta (Q)</label>
               <input 
@@ -78,7 +91,6 @@ export default function EditProductModal({
               />
             </div>
 
-            {/* --- NUEVO CAMPO: COSTO PROMEDIO --- */}
             <div className={styles.formGroup}>
               <label className={styles.label}>Costo Promedio (Q)</label>
               <input 

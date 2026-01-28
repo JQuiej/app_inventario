@@ -142,7 +142,21 @@ export async function crearVentaComprobante(ventaData: any) {
   // 2. Descontar Stock
   await supabase.from('productos').update({ stock_actual: prod.stock_actual - 1 }).eq('id', prod.id)
 
-  // 3. Guardar Comprobante (MODIFICADO: CAPTURAMOS EL RESULTADO)
+  // --- LOGICA NUEVA PARA CORRELATIVO INDEPENDIENTE ---
+  // Buscamos el último correlativo usado SOLO por este usuario
+  const { data: ultimoComprobante } = await supabase
+    .from('ventas_comprobantes')
+    .select('correlativo')
+    .eq('usuario_id', user.id)
+    .order('correlativo', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  // Si no existe ninguno, empezamos en 1. Si existe, sumamos 1.
+  const siguienteCorrelativo = (ultimoComprobante?.correlativo || 0) + 1
+  // ---------------------------------------------------
+
+  // 3. Guardar Comprobante (Insertando el correlativo calculado manualmente)
   const { data: comprobante, error: compError } = await supabase.from('ventas_comprobantes').insert({
     movimiento_id: movimiento.id,
     usuario_id: user.id,
@@ -152,14 +166,18 @@ export async function crearVentaComprobante(ventaData: any) {
     imei_dispositivo: ventaData.imei,
     icc: ventaData.icc,
     telefono_activacion: ventaData.telefono_activacion || null,
-    monto_activacion: ventaData.monto_activacion || 0
+    monto_activacion: ventaData.monto_activacion || 0,
+    correlativo: siguienteCorrelativo // <--- Aquí asignamos el ID propio
   })
-  .select() // Importante: Esto devuelve el objeto creado con el correlativo
+  .select() 
   .single()
 
-  if (compError) return { error: 'Error creando comprobante final' }
+  if (compError) {
+    console.error("Error creando comprobante:", compError)
+    return { error: 'Error creando comprobante final' }
+  }
 
-  // 4. Lógica TAM
+  // 4. Lógica TAM (Sin cambios)
   const hoy = new Date().toISOString()
   const { data: relacionPromocion } = await supabase
     .from('promocion_productos')
@@ -186,7 +204,6 @@ export async function crearVentaComprobante(ventaData: any) {
 
   revalidatePath('/dashboard/comprobantes')
   
-  // RETORNAMOS EL COMPROBANTE COMPLETO PARA EL FRONTEND
   return { success: true, data: comprobante }
 }
 

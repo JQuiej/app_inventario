@@ -71,14 +71,50 @@ export async function editarProducto(formData: FormData) {
   const productoId = formData.get('producto_id') as string
   const categoriaId = formData.get('categoria_id') as string
   
+  // Obtener datos del formulario
+  const nuevoNombre = formData.get('nombre')
+  const nuevoSku = formData.get('sku')
+  const nuevoPrecio = parseFloat(formData.get('precio_venta') as string)
+  const nuevoCosto = parseFloat(formData.get('costo_promedio') as string)
+  const nuevoStock = parseInt(formData.get('stock_actual') as string)
+
+  // 1. Obtener el producto actual para comparar el stock antiguo
+  const { data: productoActual } = await supabase
+    .from('productos')
+    .select('stock_actual')
+    .eq('id', productoId)
+    .single()
+
+  const stockAnterior = productoActual?.stock_actual || 0
+  const diferenciaStock = nuevoStock - stockAnterior
+
+  // 2. Preparar actualización del producto
   const updates = {
-    nombre: formData.get('nombre'),
-    sku: formData.get('sku'),
-    precio_venta: parseFloat(formData.get('precio_venta') as string),
-    costo_promedio: parseFloat(formData.get('costo_promedio') as string), // <--- AGREGADO
+    nombre: nuevoNombre,
+    sku: nuevoSku,
+    precio_venta: nuevoPrecio,
+    costo_promedio: nuevoCosto,
+    stock_actual: nuevoStock // Actualizamos el stock directamente
   }
 
-  await supabase.from('productos').update(updates).eq('id', productoId)
+  const { error } = await supabase.from('productos').update(updates).eq('id', productoId)
+
+  if (error) {
+    console.error('Error al actualizar producto:', error)
+    return
+  }
+
+  // 3. Si hubo cambio de stock, registrar el movimiento de AJUSTE
+  if (diferenciaStock !== 0) {
+    await supabase.from('movimientos_inventario').insert({
+      usuario_id: user.id,
+      producto_id: productoId,
+      tipo_movimiento: 'AJUSTE',
+      cantidad: Math.abs(diferenciaStock), // Guardamos la cantidad absoluta
+      costo_unitario: nuevoCosto,
+      notas: `Ajuste manual de inventario (Edición): De ${stockAnterior} a ${nuevoStock}`
+    })
+  }
   
   revalidatePath(`/dashboard/inventario/categorias/${categoriaId}`)
 }
