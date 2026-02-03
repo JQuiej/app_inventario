@@ -119,91 +119,64 @@ export async function crearVentaComprobante(ventaData: any) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'No autenticado' }
 
-  const { data: prod } = await supabase.from('productos').select('*').eq('usuario_id', user.id).eq('id', ventaData.producto_id).single()
-  if (!prod || prod.stock_actual < 1) return { error: 'Stock insuficiente' }
+  // 1. LLAMADA A LA BASE DE DATOS (Transacción segura)
+  const { data: resultadoRpc, error: rpcError } = await supabase.rpc('registrar_venta_comprobante', {
+    p_usuario_id: user.id,
+    p_producto_id: ventaData.producto_id,
+    p_precio_venta: ventaData.precio,
+    p_cliente_nombre: ventaData.cliente_nombre,
+    p_cliente_dpi: ventaData.cliente_dpi,
+    p_cliente_telefono: ventaData.cliente_telefono || null,
+    p_imei: ventaData.imei,
+    p_icc: ventaData.icc,
+    p_telefono_activacion: ventaData.telefono_activacion || null,
+    p_monto_activacion: ventaData.monto_activacion || 0
+  });
 
-  // 1. Insertar Movimiento
-  const { data: movimiento, error: movError } = await supabase
-    .from('movimientos_inventario')
-    .insert({
-      usuario_id: user.id,
-      producto_id: ventaData.producto_id,
-      tipo_movimiento: 'SALIDA',
-      cantidad: 1, 
-      precio_real_venta: ventaData.precio,
-      costo_unitario: prod.costo_promedio,
-      notas: 'Venta Dispositivo'
-    })
-    .select()
-    .single()
-
-  if (movError) return { error: 'Error al registrar movimiento' }
-
-  // 2. Descontar Stock
-  await supabase.from('productos').update({ stock_actual: prod.stock_actual - 1 }).eq('id', prod.id)
-
-  // --- LOGICA NUEVA PARA CORRELATIVO INDEPENDIENTE ---
-  // Buscamos el último correlativo usado SOLO por este usuario
-  const { data: ultimoComprobante } = await supabase
-    .from('ventas_comprobantes')
-    .select('correlativo')
-    .eq('usuario_id', user.id)
-    .order('correlativo', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  // Si no existe ninguno, empezamos en 1. Si existe, sumamos 1.
-  const siguienteCorrelativo = (ultimoComprobante?.correlativo || 0) + 1
-  // ---------------------------------------------------
-
-  // 3. Guardar Comprobante (Insertando el correlativo calculado manualmente)
-  const { data: comprobante, error: compError } = await supabase.from('ventas_comprobantes').insert({
-    movimiento_id: movimiento.id,
-    usuario_id: user.id,
-    cliente_nombre: ventaData.cliente_nombre,
-    cliente_dpi: ventaData.cliente_dpi,
-    cliente_telefono: ventaData.cliente_telefono,
-    imei_dispositivo: ventaData.imei,
-    icc: ventaData.icc,
-    telefono_activacion: ventaData.telefono_activacion || null,
-    monto_activacion: ventaData.monto_activacion || 0,
-    correlativo: siguienteCorrelativo // <--- Aquí asignamos el ID propio
-  })
-  .select() 
-  .single()
-
-  if (compError) {
-    console.error("Error creando comprobante:", compError)
-    return { error: 'Error creando comprobante final' }
+  if (rpcError) {
+    console.error("Error transacción venta:", rpcError);
+    // Mensaje amigable si el error viene de nuestra validación SQL
+    if (rpcError.message.includes('Stock insuficiente')) {
+        return { error: '¡Error! El producto ya no tiene stock disponible.' };
+    }
+    return { error: 'Error al procesar la venta. Intente nuevamente.' };
   }
 
-  // 4. Lógica TAM (Sin cambios)
-  const hoy = new Date().toISOString()
-  const { data: relacionPromocion } = await supabase
-    .from('promocion_productos')
-    .select(`monto_descuento, promocion_id, promocion_id!inner(id, activo, fecha_inicio, fecha_fin, usuario_id)`)
-    .eq('producto_id', ventaData.producto_id)
-    .eq('promocion_id.usuario_id', user.id)
-    .eq('promocion_id.activo', true)
-    .lte('promocion_id.fecha_inicio', hoy)
-    .gte('promocion_id.fecha_fin', hoy)
-    .maybeSingle()
+  // Desestructuramos la respuesta segura
+  const { movimiento_id, comprobante } = resultadoRpc;
 
-  if (relacionPromocion) {
-      const descuento = Number(relacionPromocion.monto_descuento)
-      if (descuento > 0) {
-          await supabase.from('tam').insert({
-              venta_id: movimiento.id,
-              promocion_id: relacionPromocion.promocion_id.id,
-              monto_pendiente: descuento,
-              estado: 'Registrado',
-              notas: 'Generado desde Comprobantes'
-          })
+  // 2. LÓGICA TAM (Se mantiene intacta en el frontend)
+  // Como la venta ya es segura y real, procedemos a registrar el reembolso si aplica
+  try {
+      const hoy = new Date().toISOString()
+      const { data: relacionPromocion } = await supabase
+        .from('promocion_productos')
+        .select(`monto_descuento, promocion_id, promocion_id!inner(id, activo, fecha_inicio, fecha_fin, usuario_id)`)
+        .eq('producto_id', ventaData.producto_id)
+        .eq('promocion_id.usuario_id', user.id)
+        .eq('promocion_id.activo', true)
+        .lte('promocion_id.fecha_inicio', hoy)
+        .gte('promocion_id.fecha_fin', hoy)
+        .maybeSingle()
+
+      if (relacionPromocion) {
+          const descuento = Number(relacionPromocion.monto_descuento)
+          if (descuento > 0) {
+              await supabase.from('tam').insert({
+                  venta_id: movimiento_id,
+                  promocion_id: relacionPromocion.promocion_id.id,
+                  monto_pendiente: descuento,
+                  estado: 'Registrado',
+                  notas: 'Generado desde Comprobantes'
+              })
+          }
       }
+  } catch (err) {
+      console.error("Error registrando TAM (Venta exitosa, error secundario):", err)
+      // No retornamos error aquí porque la venta principal (dinero/stock) ya se hizo bien.
   }
 
   revalidatePath('/dashboard/comprobantes')
-  
   return { success: true, data: comprobante }
 }
 

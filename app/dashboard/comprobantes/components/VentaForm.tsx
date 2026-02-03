@@ -172,26 +172,46 @@ export default function VentaForm({ productos, onOpenDPI, onOpenBarcode, onOpenB
                                 border: '1px solid #ccc', zIndex: 50, borderRadius: '0 0 8px 8px',
                                 padding: 0, margin: 0, listStyle: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' 
                             }}>
-                                {productosFiltrados.length > 0 ? (
-                                    productosFiltrados.map(p => (
-                                        <li 
-                                            key={p.id} 
-                                            onClick={() => seleccionarProducto(p)}
-                                            className={styles.dropdownItem}
-                                            style={{ 
-                                                padding: '10px 12px', borderBottom: '1px solid #778cb1', 
-                                                cursor: 'pointer', display: 'flex', justifyContent: 'space-between'
-                                            }}
-                                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#335186'}
-                                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#335186'}
-                                        >
+                                {productosFiltrados.map(p => (
+                                    <li 
+                                        key={p.id} 
+                                        onClick={() => seleccionarProducto(p)}
+                                        className={styles.dropdownItem}
+                                        style={{ 
+                                            padding: '10px 12px', borderBottom: '1px solid #778cb1', 
+                                            cursor: 'pointer', display: 'flex', justifyContent: 'space-between',
+                                            alignItems: 'center' // <--- Asegura alineación vertical
+                                        }}
+                                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#335186'}
+                                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#335186'}
+                                    >
+                                        {/* LADO IZQUIERDO: Nombre + Etiqueta */}
+                                        <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
                                             <span style={{fontWeight:'bold', color: '#333'}}>{p.nombre}</span>
-                                            <span style={{fontSize:'0.8em', color:'#666'}}>Stock: {p.stock_actual}</span>
-                                        </li>
-                                    ))
-                                ) : (
-                                    <li style={{ padding: '15px', color: '#999', textAlign:'center' }}>No se encontraron productos</li>
-                                )}
+                                            
+                                            {/* --- ETIQUETA TAM (NUEVO) --- */}
+                                            {p.tam_descuento > 0 && (
+                                                <span className="animate-pulse" style={{
+                                                    backgroundColor: '#f3e8ff', // Morado muy claro
+                                                    color: '#7e22ce',           // Morado fuerte
+                                                    border: '1px solid #d8b4fe',
+                                                    fontSize: '0.75rem',
+                                                    fontWeight: '800',
+                                                    padding: '2px 8px',
+                                                    borderRadius: '99px',
+                                                    boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                                                }}>
+                                                    TAM Q{p.tam_descuento}
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        {/* LADO DERECHO: Stock */}
+                                        <span style={{fontSize:'0.8em', color:'#666', minWidth: 'fit-content'}}>
+                                            Stock: {p.stock_actual}
+                                        </span>
+                                    </li>
+                                ))}
                             </ul>
                         </>
                     )}

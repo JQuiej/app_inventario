@@ -55,15 +55,44 @@ export async function getProductosParaVenta() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return []
 
+  const hoy = new Date().toISOString()
+
+  // 1. Modificamos el SELECT para traer relaciones de promociones
   const { data, error } = await supabase
     .from('productos')
-    .select('*')
+    .select(`
+      *,
+      promocion_productos (
+        monto_descuento,
+        promocion_id (
+          activo,
+          fecha_inicio,
+          fecha_fin
+        )
+      )
+    `)
     .eq('usuario_id', user.id)
     .gt('stock_actual', 0)
     .order('nombre')
   
   if (error) return []
-  return data
+
+  // 2. Procesamos los datos para crear un campo simple 'tam_descuento'
+  // Esto facilita su uso en el frontend sin lógica compleja allá
+  return data.map((producto: any) => {
+    // Buscamos si existe alguna promo activa en fechas
+    const promoActiva = producto.promocion_productos?.find((pp: any) => 
+      pp.promocion_id && 
+      pp.promocion_id.activo && 
+      pp.promocion_id.fecha_inicio <= hoy && 
+      pp.promocion_id.fecha_fin >= hoy
+    );
+
+    return {
+      ...producto,
+      tam_descuento: promoActiva ? Number(promoActiva.monto_descuento) : 0
+    };
+  });
 }
 
 // 2. Obtener historial filtrado (MODIFICADO PARA CATEGORÍA)
