@@ -98,6 +98,15 @@ export default function ReembolsosPage() {
     <div className={styles.container}>
       <div className={styles.header}>
         <h1 className={styles.title}>Feria de Descuentos (TAM)</h1>
+        {!loading && campanas.length > 0 && (
+          <div className={styles.pendingBadge}>
+            <div className={styles.pendingBadgeLabel}>Total Pendiente</div>
+            <div className={styles.pendingBadgeValue}>
+              Q{campanas.reduce((s, c) => s + (c.saldo_pendiente || 0), 0)
+                  .toLocaleString('en-US', { minimumFractionDigits: 2 })}
+            </div>
+          </div>
+        )}
       </div>
 
       <div>
@@ -124,10 +133,10 @@ export default function ReembolsosPage() {
         {loading && <div style={{textAlign:'center', padding:'2rem', color:'#64748b'}}>Cargando...</div>}
 
         <div className={styles.campaignsGrid}>
-            {campanas.map(c => {
-                const isActive = new Date(c.fecha_fin) >= new Date()
+            {!loading && campanas.map(c => {
+                const isActive  = new Date(c.fecha_fin) >= new Date()
                 const porcentaje = c.total_generado > 0 ? (c.total_pagado / c.total_generado) * 100 : 0
-                
+
                 return (
                     <div key={c.id} className={`${styles.campaignCard} ${!isActive ? styles.campaignCardInactive : ''}`}>
                         <div className={styles.cardHeader}>
@@ -179,6 +188,7 @@ export default function ReembolsosPage() {
                 )
             })}
         </div>
+
       </div>
     </div>
   )

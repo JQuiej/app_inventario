@@ -10,7 +10,7 @@ import {
   ResponsiveContainer
 } from 'recharts'
 
-export default function StatsChart({ data }: { data: any[] }) {
+export default function StatsChart({ data, titulo }: { data: any[]; titulo?: string }) {
   
   // 1. FILTRAR DATOS: Solo mostramos días con ventas/ingresos (> 0)
   const activeData = data ? data.filter(item => item.total > 0) : []
@@ -26,7 +26,7 @@ export default function StatsChart({ data }: { data: any[] }) {
 
   return (
     <div className="h-[350px] w-full rounded-xl border border-slate-800 bg-slate-900/50 p-4 shadow-sm">
-      <h3 className="mb-6 text-lg font-semibold text-slate-200">Resumen Financiero</h3>
+      <h3 className="mb-6 text-lg font-semibold text-slate-200">{titulo || 'Resumen Financiero'}</h3>
       
       <ResponsiveContainer width="100%" height="100%">
         {/* Usamos activeData en lugar de data */}

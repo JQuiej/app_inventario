@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 // 1. Importamos el icono Search
-import { Eye, Printer, Trash2, ChevronLeft, ChevronRight, Filter, Search } from 'lucide-react'
+import { Eye, Printer, Trash2, ChevronLeft, ChevronRight, Filter, Search, Pencil } from 'lucide-react'
 import { getHistorialFiltrado, eliminarVentaComprobante } from '../actions'
 import { toast } from 'sonner'
 import styles from '../comprobantes.module.css'
@@ -11,9 +11,10 @@ interface Props {
   onPrint: (item: any) => void;
   onPreview: (item: any) => void;
   onDelete: (id: string) => void;
+  onEdit: (item: any) => void;
 }
 
-export default function HistorialVentas({ historial, onPrint, onPreview, onDelete }: Props) {
+export default function HistorialVentas({ historial, onPrint, onPreview, onDelete, onEdit }: Props) {
     const [ventas, setVentas] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     
@@ -180,9 +181,12 @@ export default function HistorialVentas({ historial, onPrint, onPreview, onDelet
                                         )}
                                     </td>
                                     <td style={{ textAlign: 'center' }}>
-                                         <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-start' }}> {/* Ajustado a flex-start para móvil */}
+                                         <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-start' }}>
                                             <button onClick={() => onPreview(v)} className={styles.btnAction} title="Ver Detalle">
                                                 <Eye size={16}/>
+                                            </button>
+                                            <button onClick={() => onEdit(v)} className={styles.btnAction} style={{ background: '#0f766e', color:'white', borderColor:'#0f766e' }} title="Editar">
+                                                <Pencil size={16}/>
                                             </button>
                                             <button onClick={() => onPrint(v)} className={styles.btnAction} style={{ background: '#2563eb', color:'white', borderColor:'#2563eb' }} title="Imprimir">
                                                 <Printer size={16}/>

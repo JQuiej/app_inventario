@@ -2,7 +2,7 @@
 import { useState, useEffect, useTransition } from 'react' // <--- Importamos useTransition
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, FolderTree, LogOut, Menu, X, ShoppingCart, Wrench, BarChart3, Loader2, Receipt, Ticket, FileText, ScrollText } from 'lucide-react'
+import { LayoutDashboard, FolderTree, LogOut, Menu, X, ShoppingCart, Wrench, BarChart3, Loader2, Receipt, Ticket, FileText, ScrollText, ClipboardList } from 'lucide-react'
 import styles from '@/app/dashboard/layout.module.css'
 import { logout } from '@/app/login/actions'
 
@@ -86,9 +86,19 @@ export default function Sidebar({ userEmail, businessName, userRole }: SidebarPr
                 <span>Inventario</span>
               </Link>
 
-              <Link 
-                href="/dashboard/ventas" 
-                className={styles.navLink} 
+              <Link
+                href="/dashboard/pedidos"
+                className={styles.navLink}
+                onClick={() => handleLinkClick('/dashboard/pedidos')}
+                style={pathname.includes('/dashboard/pedidos') ? { backgroundColor: 'rgba(255,255,255,0.1)' } : {}}
+              >
+                {loadingPath === '/dashboard/pedidos' ? <Loader2 className="animate-spin" size={20} /> : <ClipboardList size={20} />}
+                <span>Pedidos</span>
+              </Link>
+
+              <Link
+                href="/dashboard/ventas"
+                className={styles.navLink}
                 onClick={() => handleLinkClick('/dashboard/ventas')}
                 style={pathname.includes('/dashboard/ventas') ? { backgroundColor: 'rgba(255,255,255,0.1)' } : {}}
               >

@@ -26,11 +26,9 @@ export default function BarcodeScanner({ onDetected, onClose }: Props) {
             const html5QrCode = scannerRef.current;
 
             try {
-                // --- CONFIGURACIÓN CORREGIDA ---
-                const config = { 
-                    fps: 10, 
-                    
-                    formatsToSupport: [ 
+                const config = {
+                    fps: 10,
+                    formatsToSupport: [
                         Html5QrcodeSupportedFormats.CODE_128,
                         Html5QrcodeSupportedFormats.EAN_13,
                         Html5QrcodeSupportedFormats.CODE_39,
@@ -40,20 +38,20 @@ export default function BarcodeScanner({ onDetected, onClose }: Props) {
 
                 if (html5QrCode.getState() === Html5QrcodeScannerState.NOT_STARTED) {
                     await html5QrCode.start(
-                        { facingMode: "environment" }, 
+                        { facingMode: "environment" },
                         config,
                         (decodedText) => {
                             if (!isMounted) return;
                             const cleanCode = decodedText.replace(/[^0-9]/g, '');
-                            
+
                             if (cleanCode.length >= 14 && cleanCode.length <= 16) {
-                                html5QrCode.pause(); 
+                                html5QrCode.pause();
                                 setIsScanning(false);
                                 onDetected(cleanCode);
                                 toast.success(`Leído: ${cleanCode}`);
                             }
                         },
-                        () => {} 
+                        () => {}
                     );
                 }
             } catch (err) {
@@ -93,30 +91,26 @@ export default function BarcodeScanner({ onDetected, onClose }: Props) {
 
             <div className={styles.scannerView}>
                 <div style={{ position: 'relative', width: '100%', maxWidth: '400px', margin: '0 auto' }}>
-                    
-                    {/* DIV donde se inyecta el video */}
-                    {/* IMPORTANTE: Height auto para respetar la relación de aspecto del celular */}
-                    <div 
-                        id="reader" 
-                        style={{ 
-                            width: '100%', 
-                            borderRadius: '12px', 
-                            overflow: 'hidden', 
+                    <div
+                        id="reader"
+                        style={{
+                            width: '100%',
+                            borderRadius: '12px',
+                            overflow: 'hidden',
                             background: '#000',
-                            minHeight: '300px' // Altura mínima para que no colapse cargando
+                            minHeight: '300px'
                         }}
                     ></div>
 
-                    {/* --- TU RECUADRO ROJO (VISUAL) --- */}
                     <div style={{
                         position: 'absolute',
                         top: '50%', left: '50%',
                         transform: 'translate(-50%, -50%)',
-                        width: '80%', height: '120px', 
-                        border: '2px solid red', 
+                        width: '80%', height: '120px',
+                        border: '2px solid red',
                         borderRadius: '8px',
-                        boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.5)', 
-                        zIndex: 10, 
+                        boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.5)',
+                        zIndex: 10,
                         pointerEvents: 'none'
                     }}>
                         <div style={{
@@ -131,12 +125,11 @@ export default function BarcodeScanner({ onDetected, onClose }: Props) {
                     )}
                 </div>
             </div>
-            
+
             <div className={styles.scannerControls}>
                 <p className="text-gray-400 text-sm">Centra el código de barras</p>
             </div>
 
-            {/* --- CSS CORRECCIONES --- */}
             <style jsx global>{`
                 @keyframes scan {
                     0% { top: 10%; opacity: 0; }
@@ -144,19 +137,8 @@ export default function BarcodeScanner({ onDetected, onClose }: Props) {
                     90% { opacity: 1; }
                     100% { top: 90%; opacity: 0; }
                 }
-
-                /* 1. Ocultar SIEMPRE cualquier canvas que genere la librería (el cuadro verde) */
-                #reader canvas {
-                    display: none !important;
-                }
-
-                /* 2. Forzar que el video ocupe el espacio correctamente */
-                #reader video {
-                    width: 100% !important;
-                    height: auto !important;
-                    object-fit: cover;
-                    display: block;
-                }
+                #reader canvas { display: none !important; }
+                #reader video { width: 100% !important; height: auto !important; object-fit: cover; display: block; }
             `}</style>
         </div>
     )

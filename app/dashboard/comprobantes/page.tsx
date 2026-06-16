@@ -13,6 +13,7 @@ import TicketPreview from './components/TicketPreview'
 import VentaForm from './components/VentaForm'
 import HistorialVentas from './components/HistorialVentas' // <--- NUEVO
 import ConfigForm from './components/ConfigForm'           // <--- NUEVO
+import EditarComprobanteModal from './components/EditarComprobanteModal'
 
 // Server Actions y Utils
 import { getProductosParaVenta } from '../ventas/actions'
@@ -31,6 +32,7 @@ export default function ComprobantesPage() {
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [itemToPrint, setItemToPrint] = useState<any>(null);
   const [isPrinting, setIsPrinting] = useState(false);
+  const [editItem, setEditItem] = useState<any>(null);
 
   // 2. Estado del Formulario de Venta
   const initialFormState = {
@@ -206,11 +208,12 @@ const handlePrint = (item: any) => {
 
         {/* TAB 2: HISTORIAL (DESACOPLADO) */}
         {tab === 'historial' && (
-            <HistorialVentas 
+            <HistorialVentas
                 historial={historial}
                 onPrint={handlePrint}
                 onPreview={setPreviewItem}
                 onDelete={handleDeleteVenta}
+                onEdit={setEditItem}
             />
         )}
 
@@ -220,6 +223,15 @@ const handlePrint = (item: any) => {
                 config={config}
                 onSave={handleSaveConfig}
              />
+        )}
+
+        {/* --- MODAL EDITAR COMPROBANTE --- */}
+        {editItem && (
+            <EditarComprobanteModal
+                venta={editItem}
+                onClose={() => setEditItem(null)}
+                onSaved={cargarTodo}
+            />
         )}
 
         {/* --- MODALES GLOBALES --- */}

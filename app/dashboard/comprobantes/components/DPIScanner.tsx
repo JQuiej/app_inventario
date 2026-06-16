@@ -11,21 +11,16 @@ interface Props {
     onClose: () => void;
 }
 
-// === CORRECCIÓN DE ZONAS (LADO DERECHO DEL DPI) ===
-// El DPI tiene la foto a la izquierda (aprox 30-35% del ancho).
-// Los datos están del 35% en adelante.
 const ZONES = {
-    // Zona del CUI: Parte superior DERECHA
-    cui: { 
-        x: 0.01,  y: 0.18, 
+    cui: {
+        x: 0.01,  y: 0.18,
         w: 0.33,  h: 0.15,
-        label: "CUI", color: "rgba(59, 130, 246, 0.5)" // Azul
+        label: "CUI", color: "rgba(59, 130, 246, 0.5)"
     },
-    // Zona de Apellidos y Nombres: Debajo del CUI, lado DERECHO
-    names: { 
-        x: 0.32,  y: 0.20, 
-        w: 0.25,  h: 0.30 ,
-        label: "APELLIDOS Y NOMBRES", color: "rgba(34, 197, 94, 0.5)" // Verde
+    names: {
+        x: 0.32,  y: 0.20,
+        w: 0.25,  h: 0.30,
+        label: "APELLIDOS Y NOMBRES", color: "rgba(34, 197, 94, 0.5)"
     }
 };
 
@@ -38,10 +33,10 @@ export default function DPIScanner({ onDetected, onClose }: Props) {
         let stream: MediaStream | null = null;
         const startCamera = async () => {
             try {
-                stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { 
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
                         facingMode: 'environment',
-                        width: { ideal: 1920 }, 
+                        width: { ideal: 1920 },
                         height: { ideal: 1080 },
                         focusMode: 'continuous'
                     } as any
@@ -67,13 +62,11 @@ export default function DPIScanner({ onDetected, onClose }: Props) {
         try {
             const videoW = video.videoWidth;
             const videoH = video.videoHeight;
-            // Frame ratio 1.586 (Tarjeta ID estándar)
-            const frameW = videoW * 0.90; 
+            const frameW = videoW * 0.90;
             const frameH = frameW / 1.586;
             const frameX = (videoW - frameW) / 2;
             const frameY = (videoH - frameH) / 2;
 
-            // Recortar ZONA CUI (Lado derecho superior)
             const imgCUI = cropRegion(
                 video,
                 frameX + (frameW * ZONES.cui.x),
@@ -82,7 +75,6 @@ export default function DPIScanner({ onDetected, onClose }: Props) {
                 frameH * ZONES.cui.h
             );
 
-            // Recortar ZONA NOMBRES (Lado derecho medio)
             const imgNames = cropRegion(
                 video,
                 frameX + (frameW * ZONES.names.x),
@@ -93,33 +85,30 @@ export default function DPIScanner({ onDetected, onClose }: Props) {
 
             if (imgCUI && imgNames) {
                 const worker = await createWorker('spa');
-                
-                // 1. LEER CUI (Solo Números)
+
                 await worker.setParameters({
                     tessedit_char_whitelist: '0123456789',
                     tessedit_pageseg_mode: PSM.SINGLE_LINE
                 });
-                
+
                 const { data: { text: rawCUI } } = await worker.recognize(imgCUI);
-                const finalCUI = rawCUI.replace(/\D/g, ''); 
+                const finalCUI = rawCUI.replace(/\D/g, '');
 
                 if (finalCUI.length !== 13) {
                     throw new Error("No se detectan 13 dígitos en la zona azul.");
                 }
 
-                // 2. LEER NOMBRES (Solo Mayúsculas)
                 await worker.setParameters({
-                    tessedit_char_whitelist: 'ABCDEFGHIJKLMNÑOPQRSTUVWXYZ ', 
-                    tessedit_pageseg_mode: PSM.SINGLE_BLOCK 
+                    tessedit_char_whitelist: 'ABCDEFGHIJKLMNÑOPQRSTUVWXYZ ',
+                    tessedit_pageseg_mode: PSM.SINGLE_BLOCK
                 });
 
                 const { data: { text: rawNames } } = await worker.recognize(imgNames);
                 await worker.terminate();
 
-                // Limpieza de nombres
                 const lines = rawNames.split('\n')
                     .map(l => l.trim())
-                    .filter(l => l.length > 2); // Eliminar ruido corto
+                    .filter(l => l.length > 2);
 
                 const finalName = lines.join(' ');
 
@@ -135,11 +124,10 @@ export default function DPIScanner({ onDetected, onClose }: Props) {
 
         } catch (err: any) {
             console.error(err);
-            // Mensaje de error amigable
-            const msg = err.message.includes("13 dígitos") 
-                ? "Alinee mejor el CUI en la caja AZUL" 
+            const msg = err.message.includes("13 dígitos")
+                ? "Alinee mejor el CUI en la caja AZUL"
                 : "No se pudo leer. Intente mejorar la luz.";
-            
+
             toast.error(msg);
             setStatusText("Reintentar - Verifique iluminación");
             video.play();
@@ -157,20 +145,19 @@ export default function DPIScanner({ onDetected, onClose }: Props) {
 
             <div className={styles.scannerView}>
                 <div className="relative w-full max-w-[600px] mx-auto bg-black rounded-xl overflow-hidden shadow-2xl">
-                    <video 
-                        ref={videoRef} 
-                        autoPlay playsInline muted 
+                    <video
+                        ref={videoRef}
+                        autoPlay playsInline muted
                         className="w-full h-auto object-cover opacity-70"
                     />
 
-                    {/* MARCO DE TARJETA (AMARILLO) */}
                     <div style={{
                         position: 'absolute',
                         top: '50%', left: '50%',
                         transform: 'translate(-50%, -50%)',
-                        width: '90%', 
-                        aspectRatio: '1.586', 
-                        border: '2px solid #fbbf24', 
+                        width: '90%',
+                        aspectRatio: '1.586',
+                        border: '2px solid #fbbf24',
                         borderRadius: '8px',
                         boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.7)',
                         zIndex: 10
@@ -179,7 +166,6 @@ export default function DPIScanner({ onDetected, onClose }: Props) {
                             ENCUADRE TODA LA TARJETA
                         </div>
 
-                        {/* ZONA CUI (AZUL - AHORA A LA DERECHA) */}
                         <div style={{
                             position: 'absolute',
                             left: `${ZONES.cui.x * 100}%`,
@@ -189,10 +175,9 @@ export default function DPIScanner({ onDetected, onClose }: Props) {
                             border: '2px dashed #3b82f6',
                             backgroundColor: ZONES.cui.color
                         }}>
-                             <span className="absolute -top-5 right-0 text-[10px] text-blue-300 font-bold bg-black/60 px-2 rounded">CUI</span>
+                            <span className="absolute -top-5 right-0 text-[10px] text-blue-300 font-bold bg-black/60 px-2 rounded">CUI</span>
                         </div>
 
-                        {/* ZONA NOMBRES (VERDE - AHORA A LA DERECHA) */}
                         <div style={{
                             position: 'absolute',
                             left: `${ZONES.names.x * 100}%`,
@@ -205,17 +190,17 @@ export default function DPIScanner({ onDetected, onClose }: Props) {
                             <span className="absolute bottom-1 right-1 text-[10px] text-green-300 font-bold bg-black/60 px-2 rounded">NOMBRES</span>
                         </div>
                     </div>
-                    
+
                     <div className="absolute bottom-6 left-0 w-full text-center z-20 pointer-events-none">
-                         <span className="inline-block px-4 py-1 bg-black/80 text-white text-sm rounded-full border border-gray-600">
+                        <span className="inline-block px-4 py-1 bg-black/80 text-white text-sm rounded-full border border-gray-600">
                             {statusText}
-                         </span>
+                        </span>
                     </div>
                 </div>
             </div>
 
             <div className={styles.scannerControls}>
-                <button 
+                <button
                     onClick={captureAndProcess}
                     disabled={processing}
                     className="flex flex-col items-center gap-2 group"

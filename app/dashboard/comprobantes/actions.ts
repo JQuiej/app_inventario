@@ -211,6 +211,54 @@ export async function eliminarVentaComprobante(id: string) {
     revalidatePath('/dashboard/comprobantes')
 }
 
+export async function editarVentaComprobante(id: string, datos: {
+    cliente_nombre: string;
+    cliente_dpi: string;
+    imei_dispositivo: string;
+    icc: string;
+    telefono_activacion: string;
+    monto_activacion: number;
+    precio_real_venta: number;
+}) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'No autenticado' }
+
+    const { data: comp, error: fetchError } = await supabase
+        .from('ventas_comprobantes')
+        .select('movimiento_id')
+        .eq('id', id)
+        .eq('usuario_id', user.id)
+        .single()
+
+    if (fetchError || !comp) return { error: 'Comprobante no encontrado' }
+
+    const { error: compError } = await supabase
+        .from('ventas_comprobantes')
+        .update({
+            cliente_nombre: datos.cliente_nombre,
+            cliente_dpi: datos.cliente_dpi,
+            imei_dispositivo: datos.imei_dispositivo,
+            icc: datos.icc,
+            telefono_activacion: datos.telefono_activacion,
+            monto_activacion: datos.monto_activacion,
+        })
+        .eq('id', id)
+        .eq('usuario_id', user.id)
+
+    if (compError) return { error: 'Error al actualizar comprobante' }
+
+    if (comp.movimiento_id) {
+        await supabase
+            .from('movimientos_inventario')
+            .update({ precio_real_venta: datos.precio_real_venta })
+            .eq('id', comp.movimiento_id)
+    }
+
+    revalidatePath('/dashboard/comprobantes')
+    return { success: true }
+}
+
 export async function getHistorialFiltrado(filtro: string, fecha?: string, page: number = 1, limit: number = 10, busqueda?: string) {
   const supabase = await createClient();
   

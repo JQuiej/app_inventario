@@ -70,6 +70,34 @@
   border-color: #3b82f6;
 }
 
+/* --- SELECTOR DE RANGO --- */
+.rangoBar {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.rangoBtn {
+  padding: 0.45rem 1rem;
+  border-radius: 999px;
+  background-color: #1e293b;
+  border: 1px solid #334155;
+  color: #94a3b8;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.rangoBtn:hover { background-color: #334155; color: #f1f5f9; }
+
+.rangoBtnActive {
+  background-color: #1d4ed8;
+  border-color: #3b82f6;
+  color: #fff;
+}
+
 /* --- PESTAÑAS (TABS) --- */
 .tabsContainer {
   display: flex;
